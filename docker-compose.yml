@@ -3,8 +3,8 @@ services:
     image: postgres:14-alpine
     restart: always
     # comment out if you want to externally connect DB
-    # ports:
-    #   - 5432:5432
+    ports:
+      - 5432:5432
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
     environment:
@@ -39,6 +39,8 @@ services:
       - DATABASE_STRING=postgresql+psycopg://skyvern:skyvern@postgres:5432/skyvern
       - BROWSER_TYPE=chromium-headful
       - ENABLE_CODE_BLOCK=true
+      - LOG_LEVEL=${LOG_LEVEL}
+      - LOG_RAW_API_REQUESTS=${LOG_RAW_API_REQUESTS}
       # - BROWSER_TYPE=cdp-connect
       # Use this command to start Chrome with remote debugging:
       # "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\chrome-cdp-profile" --no-first-run --no-default-browser-check
@@ -49,9 +51,10 @@ services:
     # =========================
     # OpenAI Support:
     # If you want to use OpenAI as your LLM provider, uncomment the following lines and fill in your OpenAI API key.
-    # - ENABLE_OPENAI=true
-    # - LLM_KEY=OPENAI_GPT4O
-    # - OPENAI_API_KEY=<your_openai_key>
+      - ENABLE_OPENAI=true
+      - LLM_KEY=${LLM_KEY}
+      - SECONDARY_LLM_KEY=${SECONDARY_LLM_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     #  Gemini Support:
     # Gemini is a new LLM provider that is currently in beta. You can use it by uncommenting the following lines and filling in your Gemini API key.
     # - LLM_KEY=GEMINI
@@ -143,7 +146,7 @@ services:
       - ./.streamlit:/app/.streamlit
     env_file:
       - skyvern-frontend/.env
-    environment: {}
+    environment:
     #  - VITE_ENABLE_CODE_BLOCK=true
     # if you want to run skyvern on a remote server,
     # you need to change the host in VITE_WSS_BASE_URL and VITE_API_BASE_URL to match your server ip
@@ -152,9 +155,9 @@ services:
     #   A route for the UI: yourdomain.com -> localhost:8080
     #   A route for the artifact API: artifact.yourdomain.com -> localhost:9090 (maybe not needed)
     # - VITE_WSS_BASE_URL=ws://localhost:8000/api/v1
-    #   - VITE_ARTIFACT_API_BASE_URL=http://localhost:9090
-    #   - VITE_API_BASE_URL=http://localhost:8000/api/v1
-    #   - VITE_SKYVERN_API_KEY=<get this from "settings" in the Skyvern UI>
+      - VITE_ARTIFACT_API_BASE_URL=http://localhost:9090
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+      - VITE_SKYVERN_API_KEY=${VITE_SKYVERN_API_KEY}
     depends_on:
       skyvern:
         condition: service_healthy
