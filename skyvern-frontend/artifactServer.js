@@ -50,4 +50,8 @@ app.get("/artifact/text", (req, res) => {
   res.send(contents);
 });
 
+app.get("/", (req, res) => {
+  res.status(200).send("Artifact Server Running");
+});
+
 app.listen(9090);
