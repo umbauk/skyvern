@@ -8,13 +8,13 @@ COPY ./pyproject.toml /tmp/pyproject.toml
 COPY ./poetry.lock /tmp/poetry.lock
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
-FROM python:3.11-slim-bookworm
+FROM python:3.13-slim-bookworm
 WORKDIR /app
 COPY --from=requirements-stage /tmp/requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
-RUN patchright install-deps
-RUN patchright install
+RUN python -m patchright install-deps
+RUN python -m patchright install
 RUN apt-get install -y xauth x11-apps netpbm gpg ca-certificates && apt-get clean
 
 COPY .nvmrc /app/.nvmrc
