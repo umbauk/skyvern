@@ -12,7 +12,9 @@ from skyvern.cli.console import console
 from skyvern.cli.init_command import init  # init is used directly
 from skyvern.cli.utils import start_services
 
-quickstart_app = typer.Typer(help="Quickstart command to set up and run Skyvern with one command.")
+quickstart_app = typer.Typer(
+    help="Quickstart command to set up and run Skyvern with one command."
+)
 
 
 def check_docker() -> bool:
@@ -32,11 +34,15 @@ def check_docker() -> bool:
 @quickstart_app.callback(invoke_without_command=True)
 def quickstart(
     ctx: typer.Context,
-    no_postgres: bool = typer.Option(False, "--no-postgres", help="Skip starting PostgreSQL container"),
+    no_postgres: bool = typer.Option(
+        False, "--no-postgres", help="Skip starting PostgreSQL container"
+    ),
     skip_browser_install: bool = typer.Option(
         False, "--skip-browser-install", help="Skip Chromium browser installation"
     ),
-    server_only: bool = typer.Option(False, "--server-only", help="Only start the server, not the UI"),
+    server_only: bool = typer.Option(
+        False, "--server-only", help="Only start the server, not the UI"
+    ),
 ) -> None:
     """Quickstart command to set up and run Skyvern with one command."""
     # Check Docker
@@ -54,7 +60,12 @@ def quickstart(
         status.update("✅ Docker is installed and running")
 
     # Run initialization
-    console.print(Panel("[bold green]🚀 Starting Skyvern Quickstart[/bold green]", border_style="green"))
+    console.print(
+        Panel(
+            "[bold green]🚀 Starting Skyvern Quickstart[/bold green]",
+            border_style="green",
+        )
+    )
 
     try:
         # Initialize Skyvern
@@ -64,23 +75,39 @@ def quickstart(
         # Skip browser installation if requested
         if not skip_browser_install:
             with Progress(
-                SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True, console=console
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                transient=True,
+                console=console,
             ) as progress:
-                progress.add_task("[bold blue]Installing Chromium browser...", total=None)
+                progress.add_task(
+                    "[bold blue]Installing Chromium browser...", total=None
+                )
                 try:
-                    subprocess.run(["playwright", "install", "chromium"], check=True, capture_output=True, text=True)
+                    subprocess.run(
+                        ["patchright", "install", "chromium"],
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                    )
                     console.print("✅ [green]Chromium installation complete.[/green]")
                 except subprocess.CalledProcessError as e:
-                    console.print(f"[yellow]Warning: Failed to install Chromium: {e.stderr}[/yellow]")
+                    console.print(
+                        f"[yellow]Warning: Failed to install Chromium: {e.stderr}[/yellow]"
+                    )
         else:
-            console.print("⏭️ [yellow]Skipping Chromium installation as requested.[/yellow]")
+            console.print(
+                "⏭️ [yellow]Skipping Chromium installation as requested.[/yellow]"
+            )
 
         # Start services
         console.print("\n[bold blue]Starting Skyvern services...[/bold blue]")
         asyncio.run(start_services(server_only=server_only))
 
     except KeyboardInterrupt:
-        console.print("\n[bold yellow]Quickstart process interrupted by user.[/bold yellow]")
+        console.print(
+            "\n[bold yellow]Quickstart process interrupted by user.[/bold yellow]"
+        )
         raise typer.Exit(0)
     except Exception as e:
         console.print(f"[bold red]Error during quickstart: {str(e)}[/bold red]")

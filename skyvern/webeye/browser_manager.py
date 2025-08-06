@@ -3,14 +3,18 @@ from __future__ import annotations
 import os
 
 import structlog
-from playwright.async_api import async_playwright
+from patchright.async_api import async_playwright
 
 from skyvern.exceptions import MissingBrowserState
 from skyvern.forge import app
 from skyvern.forge.sdk.schemas.tasks import Task
 from skyvern.forge.sdk.workflow.models.workflow import WorkflowRun
 from skyvern.schemas.runs import ProxyLocation
-from skyvern.webeye.browser_factory import BrowserContextFactory, BrowserState, VideoArtifact
+from skyvern.webeye.browser_factory import (
+    BrowserContextFactory,
+    BrowserState,
+    VideoArtifact,
+)
 
 LOG = structlog.get_logger()
 
@@ -55,7 +59,9 @@ class BrowserManager:
             browser_cleanup=browser_cleanup,
         )
 
-    def get_for_task(self, task_id: str, workflow_run_id: str | None = None) -> BrowserState | None:
+    def get_for_task(
+        self, task_id: str, workflow_run_id: str | None = None
+    ) -> BrowserState | None:
         if task_id in self.pages:
             return self.pages[task_id]
 
@@ -75,7 +81,9 @@ class BrowserManager:
         task: Task,
         browser_session_id: str | None = None,
     ) -> BrowserState:
-        browser_state = self.get_for_task(task_id=task.task_id, workflow_run_id=task.workflow_run_id)
+        browser_state = self.get_for_task(
+            task_id=task.task_id, workflow_run_id=task.workflow_run_id
+        )
         if browser_state is not None:
             return browser_state
 
@@ -95,14 +103,22 @@ class BrowserManager:
                 raise MissingBrowserState(task_id=task.task_id)
             else:
                 if task.organization_id:
-                    LOG.info("User to occupy browser session here", browser_session_id=browser_session_id)
+                    LOG.info(
+                        "User to occupy browser session here",
+                        browser_session_id=browser_session_id,
+                    )
                 else:
-                    LOG.warning("Organization ID is not set for task", task_id=task.task_id)
+                    LOG.warning(
+                        "Organization ID is not set for task", task_id=task.task_id
+                    )
                 page = await browser_state.get_working_page()
                 if page:
                     await browser_state.navigate_to_url(page=page, url=task.url)
                 else:
-                    LOG.warning("Browser state has no page", workflow_run_id=task.workflow_run_id)
+                    LOG.warning(
+                        "Browser state has no page",
+                        workflow_run_id=task.workflow_run_id,
+                    )
 
         if browser_state is None:
             LOG.info("Creating browser state for task", task_id=task.task_id)
@@ -138,7 +154,8 @@ class BrowserManager:
         parent_workflow_run_id = workflow_run.parent_workflow_run_id
         workflow_run_id = workflow_run.workflow_run_id
         browser_state = self.get_for_workflow_run(
-            workflow_run_id=workflow_run_id, parent_workflow_run_id=parent_workflow_run_id
+            workflow_run_id=workflow_run_id,
+            parent_workflow_run_id=parent_workflow_run_id,
         )
         if browser_state:
             # always keep the browser state for the workflow run and the parent workflow run synced
@@ -158,17 +175,24 @@ class BrowserManager:
             )
             if browser_state is None:
                 LOG.warning(
-                    "Browser state not found in persistent sessions manager", browser_session_id=browser_session_id
+                    "Browser state not found in persistent sessions manager",
+                    browser_session_id=browser_session_id,
                 )
                 raise MissingBrowserState(workflow_run_id=workflow_run.workflow_run_id)
             else:
-                LOG.info("Used to occupy browser session here", browser_session_id=browser_session_id)
+                LOG.info(
+                    "Used to occupy browser session here",
+                    browser_session_id=browser_session_id,
+                )
                 page = await browser_state.get_working_page()
                 if page:
                     if url:
                         await browser_state.navigate_to_url(page=page, url=url)
                 else:
-                    LOG.warning("Browser state has no page", workflow_run_id=workflow_run.workflow_run_id)
+                    LOG.warning(
+                        "Browser state has no page",
+                        workflow_run_id=workflow_run.workflow_run_id,
+                    )
 
         if browser_state is None:
             LOG.info(
@@ -209,9 +233,13 @@ class BrowserManager:
 
         return None
 
-    def set_video_artifact_for_task(self, task: Task, artifacts: list[VideoArtifact]) -> None:
+    def set_video_artifact_for_task(
+        self, task: Task, artifacts: list[VideoArtifact]
+    ) -> None:
         if task.workflow_run_id and task.workflow_run_id in self.pages:
-            self.pages[task.workflow_run_id].browser_artifacts.video_artifacts = artifacts
+            self.pages[task.workflow_run_id].browser_artifacts.video_artifacts = (
+                artifacts
+            )
             return
         if task.task_id in self.pages:
             self.pages[task.task_id].browser_artifacts.video_artifacts = artifacts
@@ -235,11 +263,15 @@ class BrowserManager:
             )
             return []
 
-        for i, video_artifact in enumerate(browser_state.browser_artifacts.video_artifacts):
+        for i, video_artifact in enumerate(
+            browser_state.browser_artifacts.video_artifacts
+        ):
             path = video_artifact.video_path
             if path and os.path.exists(path=path):
                 with open(path, "rb") as f:
-                    browser_state.browser_artifacts.video_artifacts[i].video_data = f.read()
+                    browser_state.browser_artifacts.video_artifacts[i].video_data = (
+                        f.read()
+                    )
 
         return browser_state.browser_artifacts.video_artifacts
 
@@ -304,11 +336,18 @@ class BrowserManager:
         browser_state_to_close = self.pages.pop(task_id, None)
         if browser_state_to_close:
             # Stop tracing before closing the browser if tracing is enabled
-            if browser_state_to_close.browser_context and browser_state_to_close.browser_artifacts.traces_dir:
+            if (
+                browser_state_to_close.browser_context
+                and browser_state_to_close.browser_artifacts.traces_dir
+            ):
                 trace_path = f"{browser_state_to_close.browser_artifacts.traces_dir}/{task_id}.zip"
-                await browser_state_to_close.browser_context.tracing.stop(path=trace_path)
+                await browser_state_to_close.browser_context.tracing.stop(
+                    path=trace_path
+                )
                 LOG.info("Stopped tracing", trace_path=trace_path)
-            await browser_state_to_close.close(close_browser_on_completion=close_browser_on_completion)
+            await browser_state_to_close.close(
+                close_browser_on_completion=close_browser_on_completion
+            )
         LOG.info("Task is cleaned up")
 
         if browser_session_id:
@@ -316,9 +355,14 @@ class BrowserManager:
                 await app.PERSISTENT_SESSIONS_MANAGER.release_browser_session(
                     browser_session_id, organization_id=organization_id
                 )
-                LOG.info("Released browser session", browser_session_id=browser_session_id)
+                LOG.info(
+                    "Released browser session", browser_session_id=browser_session_id
+                )
             else:
-                LOG.warning("Organization ID not specified, cannot release browser session", task_id=task_id)
+                LOG.warning(
+                    "Organization ID not specified, cannot release browser session",
+                    task_id=task_id,
+                )
 
         return browser_state_to_close
 
@@ -334,12 +378,19 @@ class BrowserManager:
         browser_state_to_close = self.pages.pop(workflow_run_id, None)
         if browser_state_to_close:
             # Stop tracing before closing the browser if tracing is enabled
-            if browser_state_to_close.browser_context and browser_state_to_close.browser_artifacts.traces_dir:
+            if (
+                browser_state_to_close.browser_context
+                and browser_state_to_close.browser_artifacts.traces_dir
+            ):
                 trace_path = f"{browser_state_to_close.browser_artifacts.traces_dir}/{workflow_run_id}.zip"
-                await browser_state_to_close.browser_context.tracing.stop(path=trace_path)
+                await browser_state_to_close.browser_context.tracing.stop(
+                    path=trace_path
+                )
                 LOG.info("Stopped tracing", trace_path=trace_path)
 
-            await browser_state_to_close.close(close_browser_on_completion=close_browser_on_completion)
+            await browser_state_to_close.close(
+                close_browser_on_completion=close_browser_on_completion
+            )
         for task_id in task_ids:
             task_browser_state = self.pages.pop(task_id, None)
             if task_browser_state is None:
@@ -360,10 +411,13 @@ class BrowserManager:
                 await app.PERSISTENT_SESSIONS_MANAGER.release_browser_session(
                     browser_session_id, organization_id=organization_id
                 )
-                LOG.info("Released browser session", browser_session_id=browser_session_id)
+                LOG.info(
+                    "Released browser session", browser_session_id=browser_session_id
+                )
             else:
                 LOG.warning(
-                    "Organization ID not specified, cannot release browser session", workflow_run_id=workflow_run_id
+                    "Organization ID not specified, cannot release browser session",
+                    workflow_run_id=workflow_run_id,
                 )
 
         return browser_state_to_close

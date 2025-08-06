@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Callable
 
-from playwright.async_api import Page
+from patchright.async_api import Page
 
 from skyvern.config import settings
 from skyvern.forge.sdk.api.files import download_file
@@ -13,7 +13,7 @@ from skyvern.webeye.actions.action_types import ActionType
 
 
 class Driver(StrEnum):
-    PLAYWRIGHT = "playwright"
+    PATCHRIGHT = "patchright"
 
 
 @dataclass
@@ -45,12 +45,12 @@ class SkyvernPage:
     def __init__(
         self,
         page: Page,
-        driver: Driver = Driver.PLAYWRIGHT,
+        driver: Driver = Driver.PATCHRIGHT,
         *,
         recorder: Callable[[ActionCall], None] | None = None,
     ):
         self.driver = driver
-        self.page = page  # e.g. Playwright's Page
+        self.page = page  # e.g. Patchright's Page
         self._record = recorder or (lambda ac: None)
 
     @staticmethod
@@ -76,7 +76,9 @@ class SkyvernPage:
                 meta = ActionMetadata(intention, data)
                 call = ActionCall(action, args, kwargs, meta)
                 try:
-                    call.result = await fn(skyvern_page, *args, **kwargs)  # real driver call
+                    call.result = await fn(
+                        skyvern_page, *args, **kwargs
+                    )  # real driver call
                     return call.result
                 except Exception as e:
                     call.error = e
@@ -94,7 +96,12 @@ class SkyvernPage:
 
     ######### Public Interfaces #########
     @action_wrap(ActionType.CLICK)
-    async def click(self, xpath: str, intention: str | None = None, data: str | dict[str, Any] | None = None) -> None:
+    async def click(
+        self,
+        xpath: str,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
+    ) -> None:
         locator = self.page.locator(xpath)
         await locator.click(timeout=5000)
 
@@ -112,70 +119,115 @@ class SkyvernPage:
 
     @action_wrap(ActionType.UPLOAD_FILE)
     async def upload_file(
-        self, xpath: str, file_path: str, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        xpath: str,
+        file_path: str,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None:
         file = await download_file(file_path)
         await self.page.set_input_files(xpath, file)
 
     @action_wrap(ActionType.SELECT_OPTION)
     async def select_option(
-        self, xpath: str, option: str, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        xpath: str,
+        option: str,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None:
         locator = self.page.locator(xpath)
         await locator.select_option(option, timeout=5000)
 
     @action_wrap(ActionType.WAIT)
     async def wait(
-        self, seconds: float, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        seconds: float,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None: ...
 
     @action_wrap(ActionType.NULL_ACTION)
-    async def null_action(self, intention: str | None = None, data: str | dict[str, Any] | None = None) -> None: ...
+    async def null_action(
+        self, intention: str | None = None, data: str | dict[str, Any] | None = None
+    ) -> None: ...
 
     @action_wrap(ActionType.SOLVE_CAPTCHA)
     async def solve_captcha(
-        self, xpath: str, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        xpath: str,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None: ...
 
     @action_wrap(ActionType.TERMINATE)
     async def terminate(
-        self, errors: list[str], intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        errors: list[str],
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None: ...
 
     @action_wrap(ActionType.COMPLETE)
     async def complete(
-        self, data_extraction_goal: str, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        data_extraction_goal: str,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None: ...
 
     @action_wrap(ActionType.RELOAD_PAGE)
-    async def reload_page(self, intention: str | None = None, data: str | dict[str, Any] | None = None) -> None: ...
+    async def reload_page(
+        self, intention: str | None = None, data: str | dict[str, Any] | None = None
+    ) -> None: ...
 
     @action_wrap(ActionType.EXTRACT)
     async def extract(
-        self, data_extraction_goal: str, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        data_extraction_goal: str,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None: ...
 
     @action_wrap(ActionType.VERIFICATION_CODE)
     async def verification_code(
-        self, xpath: str, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        xpath: str,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None: ...
 
     @action_wrap(ActionType.SCROLL)
     async def scroll(
-        self, amount: int, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        amount: int,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None: ...
 
     @action_wrap(ActionType.KEYPRESS)
     async def keypress(
-        self, key: str, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        key: str,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None: ...
 
     @action_wrap(ActionType.TYPE)
-    async def type(self, text: str, intention: str | None = None, data: str | dict[str, Any] | None = None) -> None: ...
+    async def type(
+        self,
+        text: str,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
+    ) -> None: ...
 
     @action_wrap(ActionType.MOVE)
     async def move(
-        self, x: int, y: int, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        x: int,
+        y: int,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None: ...
 
     @action_wrap(ActionType.DRAG)
@@ -191,7 +243,11 @@ class SkyvernPage:
 
     @action_wrap(ActionType.LEFT_MOUSE)
     async def left_mouse(
-        self, x: int, y: int, intention: str | None = None, data: str | dict[str, Any] | None = None
+        self,
+        x: int,
+        y: int,
+        intention: str | None = None,
+        data: str | dict[str, Any] | None = None,
     ) -> None: ...
 
 

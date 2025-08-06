@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 import structlog
-from playwright.async_api import Page
+from patchright.async_api import Page
 from sqlalchemy.exc import OperationalError
 
 from skyvern.config import settings
@@ -28,8 +28,17 @@ from skyvern.forge.sdk.core.security import generate_skyvern_webhook_headers
 from skyvern.forge.sdk.core.skyvern_context import SkyvernContext
 from skyvern.forge.sdk.db.enums import OrganizationAuthTokenType
 from skyvern.forge.sdk.schemas.organizations import Organization
-from skyvern.forge.sdk.schemas.task_v2 import TaskV2, TaskV2Metadata, TaskV2Status, ThoughtScenario, ThoughtType
-from skyvern.forge.sdk.schemas.workflow_runs import WorkflowRunTimeline, WorkflowRunTimelineType
+from skyvern.forge.sdk.schemas.task_v2 import (
+    TaskV2,
+    TaskV2Metadata,
+    TaskV2Status,
+    ThoughtScenario,
+    ThoughtType,
+)
+from skyvern.forge.sdk.schemas.workflow_runs import (
+    WorkflowRunTimeline,
+    WorkflowRunTimelineType,
+)
 from skyvern.forge.sdk.trace import TraceManager
 from skyvern.forge.sdk.workflow.models.block import (
     BlockResult,
@@ -61,7 +70,13 @@ from skyvern.forge.sdk.workflow.models.yaml import (
     WorkflowCreateYAMLRequest,
     WorkflowDefinitionYAML,
 )
-from skyvern.schemas.runs import ProxyLocation, RunEngine, RunType, TaskRunRequest, TaskRunResponse
+from skyvern.schemas.runs import (
+    ProxyLocation,
+    RunEngine,
+    RunType,
+    TaskRunRequest,
+    TaskRunResponse,
+)
 from skyvern.utils.prompt_engine import load_prompt_with_elements
 from skyvern.webeye.browser_factory import BrowserState
 from skyvern.webeye.scraper.scraper import ScrapedPage, scrape_website
@@ -112,14 +127,19 @@ async def _summarize_max_steps_failure_reason(
         if page is None:
             return "Failed to get the current browser page"
 
-        screenshots = await SkyvernFrame.take_split_screenshots(page=page, url=str(task_v2.url), draw_boxes=False)
+        screenshots = await SkyvernFrame.take_split_screenshots(
+            page=page, url=str(task_v2.url), draw_boxes=False
+        )
 
         run_blocks = await app.DATABASE.get_workflow_run_blocks(
             workflow_run_id=task_v2.workflow_run_id,
             organization_id=organization_id,
         )
 
-        history = [f"{idx + 1}. {block.description} -- {block.status}" for idx, block in enumerate(run_blocks[::-1])]
+        history = [
+            f"{idx + 1}. {block.description} -- {block.status}"
+            for idx, block in enumerate(run_blocks[::-1])
+        ]
 
         thought = await app.DATABASE.create_thought(
             task_v2_id=task_v2.observer_cruise_id,
@@ -197,7 +217,9 @@ async def initialize_task_v2(
         thought_scenario=ThoughtScenario.generate_metadata,
     )
 
-    metadata_prompt = prompt_engine.load_prompt("task_v2_generate_metadata", user_goal=user_prompt, user_url=user_url)
+    metadata_prompt = prompt_engine.load_prompt(
+        "task_v2_generate_metadata", user_goal=user_prompt, user_url=user_url
+    )
     metadata_response = await app.LLM_API_HANDLER(
         prompt=metadata_prompt,
         thought=thought,
@@ -220,7 +242,11 @@ async def initialize_task_v2(
     # create workflow and workflow run
     max_steps_override = 10
     try:
-        workflow_status = WorkflowStatus.published if publish_workflow else WorkflowStatus.auto_generated
+        workflow_status = (
+            WorkflowStatus.published
+            if publish_workflow
+            else WorkflowStatus.auto_generated
+        )
         new_workflow = await app.WORKFLOW_SERVICE.create_empty_workflow(
             organization,
             metadata.workflow_title,
@@ -309,7 +335,9 @@ async def run_task_v2(
 ) -> TaskV2:
     organization_id = organization.organization_id
     try:
-        task_v2 = await app.DATABASE.get_task_v2(task_v2_id, organization_id=organization_id)
+        task_v2 = await app.DATABASE.get_task_v2(
+            task_v2_id, organization_id=organization_id
+        )
     except Exception:
         LOG.error(
             "Failed to get task v2",
@@ -323,7 +351,9 @@ async def run_task_v2(
             failure_reason="Failed to get task v2",
         )
     if not task_v2:
-        LOG.error("Task v2 not found", task_v2_id=task_v2_id, organization_id=organization_id)
+        LOG.error(
+            "Task v2 not found", task_v2_id=task_v2_id, organization_id=organization_id
+        )
         raise TaskV2NotFound(task_v2_id=task_v2_id)
 
     workflow, workflow_run = None, None
@@ -342,7 +372,9 @@ async def run_task_v2(
             organization_id=organization_id,
             failure_reason=e.message,
         )
-        LOG.info("Task v2 is terminated", task_v2_id=task_v2_id, failure_reason=e.message)
+        LOG.info(
+            "Task v2 is terminated", task_v2_id=task_v2_id, failure_reason=e.message
+        )
         return task_v2
     except OperationalError:
         LOG.error("Database error when running task v2", exc_info=True)
@@ -363,7 +395,9 @@ async def run_task_v2(
         )
     finally:
         if task_v2.workflow_id and not workflow:
-            workflow = await app.WORKFLOW_SERVICE.get_workflow(task_v2.workflow_id, organization_id=organization_id)
+            workflow = await app.WORKFLOW_SERVICE.get_workflow(
+                task_v2.workflow_id, organization_id=organization_id
+            )
         if task_v2.workflow_run_id and not workflow_run:
             workflow_run = await app.WORKFLOW_SERVICE.get_workflow_run(
                 task_v2.workflow_run_id, organization_id=organization_id
@@ -442,7 +476,9 @@ async def run_task_v2_helper(
 
     workflow_run_id = task_v2.workflow_run_id
 
-    workflow_run = await app.WORKFLOW_SERVICE.get_workflow_run(workflow_run_id, organization_id=organization_id)
+    workflow_run = await app.WORKFLOW_SERVICE.get_workflow_run(
+        workflow_run_id, organization_id=organization_id
+    )
     if not workflow_run:
         LOG.error("Workflow run not found", workflow_run_id=workflow_run_id)
         return None, None, task_v2
@@ -450,11 +486,17 @@ async def run_task_v2_helper(
         LOG.info("Workflow run found", workflow_run_id=workflow_run_id)
 
     if workflow_run.status != WorkflowRunStatus.queued:
-        LOG.warning("Duplicate workflow run execution", workflow_run_id=workflow_run_id, status=workflow_run.status)
+        LOG.warning(
+            "Duplicate workflow run execution",
+            workflow_run_id=workflow_run_id,
+            status=workflow_run.status,
+        )
         return None, None, task_v2
 
     workflow_id = workflow_run.workflow_id
-    workflow = await app.WORKFLOW_SERVICE.get_workflow(workflow_id, organization_id=organization_id)
+    workflow = await app.WORKFLOW_SERVICE.get_workflow(
+        workflow_id, organization_id=organization_id
+    )
     if not workflow:
         LOG.error("Workflow not found", workflow_id=workflow_id)
         return None, None, task_v2
@@ -477,9 +519,13 @@ async def run_task_v2_helper(
     )
 
     task_v2 = await app.DATABASE.update_task_v2(
-        task_v2_id=task_v2_id, organization_id=organization_id, status=TaskV2Status.running
+        task_v2_id=task_v2_id,
+        organization_id=organization_id,
+        status=TaskV2Status.running,
     )
-    await app.WORKFLOW_SERVICE.mark_workflow_run_as_running(workflow_run_id=workflow_run.workflow_run_id)
+    await app.WORKFLOW_SERVICE.mark_workflow_run_as_running(
+        workflow_run_id=workflow_run.workflow_run_id
+    )
     await _set_up_workflow_context(workflow_id, workflow_run_id, organization)
 
     url = str(task_v2.url)
@@ -499,7 +545,9 @@ async def run_task_v2_helper(
         )
 
         # check the status of the workflow run
-        workflow_run = await app.WORKFLOW_SERVICE.get_workflow_run(workflow_run_id, organization_id=organization_id)
+        workflow_run = await app.WORKFLOW_SERVICE.get_workflow_run(
+            workflow_run_id, organization_id=organization_id
+        )
         if not workflow_run:
             LOG.error("Workflow run not found", workflow_run_id=workflow_run_id)
             break
@@ -529,29 +577,41 @@ async def run_task_v2_helper(
         page: Page | None = None
         fallback_url = settings.TASK_BLOCKED_SITE_FALLBACK_URL
         browser_state = app.BROWSER_MANAGER.get_for_workflow_run(
-            workflow_run_id=workflow_run_id, parent_workflow_run_id=workflow_run.parent_workflow_run_id
+            workflow_run_id=workflow_run_id,
+            parent_workflow_run_id=workflow_run.parent_workflow_run_id,
         )
         fallback_occurred = False
         if browser_state is None:
             try:
-                browser_state = await app.BROWSER_MANAGER.get_or_create_for_workflow_run(
-                    workflow_run=workflow_run,
-                    url=url,
-                    browser_session_id=browser_session_id,
+                browser_state = (
+                    await app.BROWSER_MANAGER.get_or_create_for_workflow_run(
+                        workflow_run=workflow_run,
+                        url=url,
+                        browser_session_id=browser_session_id,
+                    )
                 )
             except Exception:
-                LOG.warning("Failed to get or create browser state, fallback to Google", exc_info=True, url=url)
+                LOG.warning(
+                    "Failed to get or create browser state, fallback to Google",
+                    exc_info=True,
+                    url=url,
+                )
 
-                browser_state = await app.BROWSER_MANAGER.get_or_create_for_workflow_run(
-                    workflow_run=workflow_run,
-                    url=fallback_url,
-                    browser_session_id=browser_session_id,
+                browser_state = (
+                    await app.BROWSER_MANAGER.get_or_create_for_workflow_run(
+                        workflow_run=workflow_run,
+                        url=fallback_url,
+                        browser_session_id=browser_session_id,
+                    )
                 )
 
                 fallback_occurred = True
 
             if browser_state is None:
-                LOG.error("Failed to create browser state even after fallback", workflow_run_id=workflow_run_id)
+                LOG.error(
+                    "Failed to create browser state even after fallback",
+                    workflow_run_id=workflow_run_id,
+                )
                 raise MissingBrowserState(workflow_run_id=workflow_run_id)
 
             page = await browser_state.get_working_page()
@@ -578,7 +638,12 @@ async def run_task_v2_helper(
                         await page.goto(fallback_url, timeout=15000)
                         fallback_occurred = True
                     except Exception:
-                        LOG.exception("Failed to load Google fallback", exc_info=True, url=url, current_url=current_url)
+                        LOG.exception(
+                            "Failed to load Google fallback",
+                            exc_info=True,
+                            url=url,
+                            current_url=current_url,
+                        )
         else:
             page = await browser_state.get_working_page()
             if page:
@@ -589,18 +654,22 @@ async def run_task_v2_helper(
                 plan = f"Go to Google because the intended website ({url}) failed to load properly."
                 task_type = "goto_url"
                 task_history_record = {"type": task_type, "task": plan}
-                block, block_yaml_list, parameter_yaml_list = await _generate_goto_url_task(
-                    workflow_id=workflow_id,
-                    url=fallback_url,
+                block, block_yaml_list, parameter_yaml_list = (
+                    await _generate_goto_url_task(
+                        workflow_id=workflow_id,
+                        url=fallback_url,
+                    )
                 )
             else:
                 # Page loaded successfully, proceed with original URL
                 plan = f"Go to this website: {url}"
                 task_type = "goto_url"
                 task_history_record = {"type": task_type, "task": plan}
-                block, block_yaml_list, parameter_yaml_list = await _generate_goto_url_task(
-                    workflow_id=workflow_id,
-                    url=url,
+                block, block_yaml_list, parameter_yaml_list = (
+                    await _generate_goto_url_task(
+                        workflow_id=workflow_id,
+                        url=url,
+                    )
                 )
         else:
             try:
@@ -614,10 +683,16 @@ async def run_task_v2_helper(
                     page = await browser_state.get_working_page()
             except Exception:
                 LOG.exception(
-                    "Failed to get browser state or scrape website in task v2 iteration", iteration=i, url=url
+                    "Failed to get browser state or scrape website in task v2 iteration",
+                    iteration=i,
+                    url=url,
                 )
                 continue
-            current_url = current_url if current_url else str(await SkyvernFrame.get_url(frame=page) if page else url)
+            current_url = (
+                current_url
+                if current_url
+                else str(await SkyvernFrame.get_url(frame=page) if page else url)
+            )
 
             task_v2_prompt = load_prompt_with_elements(
                 scraped_page,
@@ -666,7 +741,10 @@ async def run_task_v2_helper(
                 thought=thoughts,
                 observation=observation,
                 answer=plan,
-                output={"task_type": task_type, "user_goal_achieved": user_goal_achieved},
+                output={
+                    "task_type": task_type,
+                    "user_goal_achieved": user_goal_achieved,
+                },
             )
 
             if user_goal_achieved is True:
@@ -684,12 +762,18 @@ async def run_task_v2_helper(
                 break
 
             if not plan:
-                LOG.warning("No plan found in task v2 response", task_v2_response=task_v2_response)
+                LOG.warning(
+                    "No plan found in task v2 response",
+                    task_v2_response=task_v2_response,
+                )
                 continue
 
             # parse task v2 response and run the next task
             if not task_type:
-                LOG.error("No task type found in task v2 response", task_v2_response=task_v2_response)
+                LOG.error(
+                    "No task type found in task v2 response",
+                    task_v2_response=task_v2_response,
+                )
                 await mark_task_v2_as_failed(
                     task_v2_id=task_v2_id,
                     workflow_run_id=workflow_run_id,
@@ -698,33 +782,45 @@ async def run_task_v2_helper(
                 break
 
             if task_type == "extract":
-                block, block_yaml_list, parameter_yaml_list = await _generate_extraction_task(
-                    task_v2=task_v2,
-                    workflow_id=workflow_id,
-                    workflow_permanent_id=workflow.workflow_permanent_id,
-                    workflow_run_id=workflow_run_id,
-                    current_url=current_url,
-                    scraped_page=scraped_page,
-                    data_extraction_goal=plan,
-                    task_history=task_history,
+                block, block_yaml_list, parameter_yaml_list = (
+                    await _generate_extraction_task(
+                        task_v2=task_v2,
+                        workflow_id=workflow_id,
+                        workflow_permanent_id=workflow.workflow_permanent_id,
+                        workflow_run_id=workflow_run_id,
+                        current_url=current_url,
+                        scraped_page=scraped_page,
+                        data_extraction_goal=plan,
+                        task_history=task_history,
+                    )
                 )
                 task_history_record = {"type": task_type, "task": plan}
             elif task_type == "navigate":
                 original_url = url if i == 0 else None
-                navigation_goal = MINI_GOAL_TEMPLATE.format(main_goal=user_prompt, mini_goal=plan)
-                block, block_yaml_list, parameter_yaml_list = await _generate_navigation_task(
-                    workflow_id=workflow_id,
-                    workflow_permanent_id=workflow.workflow_permanent_id,
-                    workflow_run_id=workflow_run_id,
-                    original_url=original_url,
-                    navigation_goal=navigation_goal,
-                    totp_verification_url=task_v2.totp_verification_url,
-                    totp_identifier=task_v2.totp_identifier,
+                navigation_goal = MINI_GOAL_TEMPLATE.format(
+                    main_goal=user_prompt, mini_goal=plan
+                )
+                block, block_yaml_list, parameter_yaml_list = (
+                    await _generate_navigation_task(
+                        workflow_id=workflow_id,
+                        workflow_permanent_id=workflow.workflow_permanent_id,
+                        workflow_run_id=workflow_run_id,
+                        original_url=original_url,
+                        navigation_goal=navigation_goal,
+                        totp_verification_url=task_v2.totp_verification_url,
+                        totp_identifier=task_v2.totp_identifier,
+                    )
                 )
                 task_history_record = {"type": task_type, "task": plan}
             elif task_type == "loop":
                 try:
-                    block, block_yaml_list, parameter_yaml_list, extraction_obj, inner_task = await _generate_loop_task(
+                    (
+                        block,
+                        block_yaml_list,
+                        parameter_yaml_list,
+                        extraction_obj,
+                        inner_task,
+                    ) = await _generate_loop_task(
                         task_v2=task_v2,
                         workflow_id=workflow_id,
                         workflow_permanent_id=workflow.workflow_permanent_id,
@@ -792,7 +888,10 @@ async def run_task_v2_helper(
             status=workflow.status,
             max_screenshot_scrolls=task_v2.max_screenshot_scrolls,
         )
-        LOG.info("Creating workflow from request", workflow_create_request=workflow_create_request)
+        LOG.info(
+            "Creating workflow from request",
+            workflow_create_request=workflow_create_request,
+        )
         workflow = await app.WORKFLOW_SERVICE.create_workflow_from_request(
             organization=organization,
             request=workflow_create_request,
@@ -819,10 +918,12 @@ async def run_task_v2_helper(
         if block_result.success is True:
             completion_screenshots = []
             try:
-                browser_state = await app.BROWSER_MANAGER.get_or_create_for_workflow_run(
-                    workflow_run=workflow_run,
-                    url=url,
-                    browser_session_id=browser_session_id,
+                browser_state = (
+                    await app.BROWSER_MANAGER.get_or_create_for_workflow_run(
+                        workflow_run=workflow_run,
+                        url=url,
+                        browser_session_id=browser_session_id,
+                    )
                 )
                 scraped_page = await scrape_website(
                     browser_state,
@@ -887,14 +988,24 @@ async def run_task_v2_helper(
                 break
 
         # total step number validation
-        workflow_run_tasks = await app.DATABASE.get_tasks_by_workflow_run_id(workflow_run_id=workflow_run_id)
-        total_step_count = await app.DATABASE.get_total_unique_step_order_count_by_task_ids(
-            task_ids=[task.task_id for task in workflow_run_tasks],
-            organization_id=organization_id,
+        workflow_run_tasks = await app.DATABASE.get_tasks_by_workflow_run_id(
+            workflow_run_id=workflow_run_id
+        )
+        total_step_count = (
+            await app.DATABASE.get_total_unique_step_order_count_by_task_ids(
+                task_ids=[task.task_id for task in workflow_run_tasks],
+                organization_id=organization_id,
+            )
         )
         if total_step_count >= max_steps:
-            LOG.info("Task v2 failed - run out of steps", max_steps=max_steps, workflow_run_id=workflow_run_id)
-            failure_reason = await _summarize_max_steps_failure_reason(task_v2, organization_id, browser_state)
+            LOG.info(
+                "Task v2 failed - run out of steps",
+                max_steps=max_steps,
+                workflow_run_id=workflow_run_id,
+            )
+            failure_reason = await _summarize_max_steps_failure_reason(
+                task_v2, organization_id, browser_state
+            )
             await mark_task_v2_as_failed(
                 task_v2_id=task_v2_id,
                 workflow_run_id=workflow_run_id,
@@ -909,7 +1020,9 @@ async def run_task_v2_helper(
             max_steps=max_steps,
             workflow_run_id=workflow_run_id,
         )
-        failure_reason = await _summarize_max_steps_failure_reason(task_v2, organization_id, browser_state)
+        failure_reason = await _summarize_max_steps_failure_reason(
+            task_v2, organization_id, browser_state
+        )
         task_v2 = await mark_task_v2_as_failed(
             task_v2_id=task_v2_id,
             workflow_run_id=workflow_run_id,
@@ -991,13 +1104,21 @@ async def handle_block_result(
     )
 
 
-async def _set_up_workflow_context(workflow_id: str, workflow_run_id: str, organization: Organization) -> None:
+async def _set_up_workflow_context(
+    workflow_id: str, workflow_run_id: str, organization: Organization
+) -> None:
     """
     TODO: see if we could remove this function as we can just set an empty workflow context
     """
     # Get all <workflow parameter, workflow run parameter> tuples
-    wp_wps_tuples = await app.WORKFLOW_SERVICE.get_workflow_run_parameter_tuples(workflow_run_id=workflow_run_id)
-    workflow_output_parameters = await app.WORKFLOW_SERVICE.get_workflow_output_parameters(workflow_id=workflow_id)
+    wp_wps_tuples = await app.WORKFLOW_SERVICE.get_workflow_run_parameter_tuples(
+        workflow_run_id=workflow_run_id
+    )
+    workflow_output_parameters = (
+        await app.WORKFLOW_SERVICE.get_workflow_output_parameters(
+            workflow_id=workflow_id
+        )
+    )
     await app.WORKFLOW_CONTEXT_MANAGER.initialize_workflow_run_context(
         organization,
         workflow_run_id,
@@ -1017,13 +1138,21 @@ async def _generate_loop_task(
     browser_state: BrowserState,
     original_url: str,
     scraped_page: ScrapedPage,
-) -> tuple[ForLoopBlock, list[BLOCK_YAML_TYPES], list[PARAMETER_YAML_TYPES], dict[str, Any], dict[str, Any]]:
+) -> tuple[
+    ForLoopBlock,
+    list[BLOCK_YAML_TYPES],
+    list[PARAMETER_YAML_TYPES],
+    dict[str, Any],
+    dict[str, Any],
+]:
     for_loop_parameter_yaml_list: list[PARAMETER_YAML_TYPES] = []
     loop_value_extraction_goal = prompt_engine.load_prompt(
         "task_v2_loop_task_extraction_goal",
         plan=plan,
     )
-    data_extraction_thought = f"Going to generate a list of values to go through based on the plan: {plan}."
+    data_extraction_thought = (
+        f"Going to generate a list of values to go through based on the plan: {plan}."
+    )
     thought = await app.DATABASE.create_thought(
         task_v2_id=task_v2.observer_cruise_id,
         organization_id=task_v2.organization_id,
@@ -1050,9 +1179,11 @@ async def _generate_loop_task(
         data_extraction_goal=loop_value_extraction_goal,
         data_schema=_generate_data_extraction_schema_for_loop(loop_values_key),
     )
-    loop_value_extraction_output_parameter = await app.WORKFLOW_SERVICE.create_output_parameter_for_block(
-        workflow_id=workflow_id,
-        block_yaml=extraction_block_yaml,
+    loop_value_extraction_output_parameter = (
+        await app.WORKFLOW_SERVICE.create_output_parameter_for_block(
+            workflow_id=workflow_id,
+            block_yaml=extraction_block_yaml,
+        )
     )
     extraction_block_for_loop = ExtractionBlock(
         label=label,
@@ -1078,11 +1209,17 @@ async def _generate_loop_task(
     try:
         output_value_obj: dict[str, Any] = extraction_block_result.output_parameter_value.get("extracted_information")  # type: ignore
         if not output_value_obj or not isinstance(output_value_obj, dict):
-            raise Exception("Invalid output parameter of the extraction block for the loop task")
+            raise Exception(
+                "Invalid output parameter of the extraction block for the loop task"
+            )
         if loop_values_key not in output_value_obj:
-            raise Exception("loop_values_key not found in the output parameter of the extraction block")
+            raise Exception(
+                "loop_values_key not found in the output parameter of the extraction block"
+            )
         if "is_loop_value_link" not in output_value_obj:
-            raise Exception("is_loop_value_link not found in the output parameter of the extraction block")
+            raise Exception(
+                "is_loop_value_link not found in the output parameter of the extraction block"
+            )
         loop_values = output_value_obj.get(loop_values_key, [])
         is_loop_value_link = output_value_obj.get("is_loop_value_link")
     except Exception:
@@ -1111,7 +1248,9 @@ async def _generate_loop_task(
             source_parameter_key=loop_value_extraction_output_parameter.key,
         )
     )
-    app.WORKFLOW_CONTEXT_MANAGER.add_context_parameter(workflow_run_id, loop_for_context_parameter)
+    app.WORKFLOW_CONTEXT_MANAGER.add_context_parameter(
+        workflow_run_id, loop_for_context_parameter
+    )
     await app.WORKFLOW_CONTEXT_MANAGER.set_parameter_values_for_output_parameter_dependent_blocks(
         workflow_run_id=workflow_run_id,
         output_parameter=loop_value_extraction_output_parameter,
@@ -1140,7 +1279,9 @@ async def _generate_loop_task(
             source_parameter_key=loop_for_context_parameter.key,
         )
     )
-    app.WORKFLOW_CONTEXT_MANAGER.add_context_parameter(workflow_run_id, url_value_context_parameter)
+    app.WORKFLOW_CONTEXT_MANAGER.add_context_parameter(
+        workflow_run_id, url_value_context_parameter
+    )
 
     task_in_loop_label = f"task_in_loop_{_generate_random_string()}"
     context = skyvern_context.ensure_context()
@@ -1166,7 +1307,10 @@ async def _generate_loop_task(
         thought=thought_task_in_loop,
         prompt_name="task_v2_generate_task_block",
     )
-    LOG.info("Task in loop metadata response", task_in_loop_metadata_response=task_in_loop_metadata_response)
+    LOG.info(
+        "Task in loop metadata response",
+        task_in_loop_metadata_response=task_in_loop_metadata_response,
+    )
     navigation_goal = task_in_loop_metadata_response.get("navigation_goal")
     data_extraction_goal = task_in_loop_metadata_response.get("data_extraction_goal")
     data_extraction_schema = task_in_loop_metadata_response.get("data_schema")
@@ -1193,9 +1337,11 @@ async def _generate_loop_task(
         continue_on_failure=True,
         complete_verification=False,
     )
-    block_yaml_output_parameter = await app.WORKFLOW_SERVICE.create_output_parameter_for_block(
-        workflow_id=workflow_id,
-        block_yaml=block_yaml,
+    block_yaml_output_parameter = (
+        await app.WORKFLOW_SERVICE.create_output_parameter_for_block(
+            workflow_id=workflow_id,
+            block_yaml=block_yaml,
+        )
     )
     task_in_loop_block = TaskBlock(
         label=task_in_loop_label,
@@ -1249,7 +1395,11 @@ async def _generate_extraction_task(
     data_extraction_goal: str,
     task_history: list[dict] | None = None,
 ) -> tuple[ExtractionBlock, list[BLOCK_YAML_TYPES], list[PARAMETER_YAML_TYPES]]:
-    LOG.info("Generating extraction task", data_extraction_goal=data_extraction_goal, current_url=current_url)
+    LOG.info(
+        "Generating extraction task",
+        data_extraction_goal=data_extraction_goal,
+        current_url=current_url,
+    )
     # extract the data
     context = skyvern_context.ensure_context()
     generate_extraction_task_prompt = load_prompt_with_elements(
@@ -1266,10 +1416,15 @@ async def _generate_extraction_task(
         task_v2=task_v2,
         prompt_name="task_v2_generate_extraction_task",
     )
-    LOG.info("Data extraction response", data_extraction_response=generate_extraction_task_response)
+    LOG.info(
+        "Data extraction response",
+        data_extraction_response=generate_extraction_task_response,
+    )
 
     # create OutputParameter for the data_extraction block
-    data_schema: dict[str, Any] | list | None = generate_extraction_task_response.get("schema")
+    data_schema: dict[str, Any] | list | None = generate_extraction_task_response.get(
+        "schema"
+    )
     label = f"data_extraction_{_generate_random_string()}"
     url: str | None = None
     if not task_history:
@@ -1308,7 +1463,11 @@ async def _generate_navigation_task(
     totp_verification_url: str | None = None,
     totp_identifier: str | None = None,
 ) -> tuple[NavigationBlock, list[BLOCK_YAML_TYPES], list[PARAMETER_YAML_TYPES]]:
-    LOG.info("Generating navigation task", navigation_goal=navigation_goal, original_url=original_url)
+    LOG.info(
+        "Generating navigation task",
+        navigation_goal=navigation_goal,
+        original_url=original_url,
+    )
     label = f"navigation_{_generate_random_string()}"
     navigation_block_yaml = NavigationBlockYAML(
         label=label,
@@ -1371,7 +1530,9 @@ def _generate_random_string(length: int = 5) -> str:
     return "".join(random.choices(RANDOM_STRING_POOL, k=length))
 
 
-async def get_thought_timelines(*, task_v2_id: str, organization_id: str) -> list[WorkflowRunTimeline]:
+async def get_thought_timelines(
+    *, task_v2_id: str, organization_id: str
+) -> list[WorkflowRunTimeline]:
     thoughts = await app.DATABASE.get_thoughts(
         task_v2_id=task_v2_id,
         organization_id=organization_id,
@@ -1391,7 +1552,9 @@ async def get_thought_timelines(*, task_v2_id: str, organization_id: str) -> lis
     ]
 
 
-async def get_task_v2(task_v2_id: str, organization_id: str | None = None) -> TaskV2 | None:
+async def get_task_v2(
+    task_v2_id: str, organization_id: str | None = None
+) -> TaskV2 | None:
     return await app.DATABASE.get_task_v2(task_v2_id, organization_id=organization_id)
 
 
@@ -1432,7 +1595,9 @@ async def mark_task_v2_as_completed(
         await app.WORKFLOW_SERVICE.mark_workflow_run_as_completed(workflow_run_id)
 
     # Track task v2 duration when completed
-    duration_seconds = (datetime.now(UTC) - task_v2.created_at.replace(tzinfo=UTC)).total_seconds()
+    duration_seconds = (
+        datetime.now(UTC) - task_v2.created_at.replace(tzinfo=UTC)
+    ).total_seconds()
     LOG.info(
         "Task v2 duration metrics",
         task_v2_id=task_v2_id,
@@ -1474,7 +1639,9 @@ async def mark_task_v2_as_terminated(
         status=TaskV2Status.terminated,
     )
     if workflow_run_id:
-        await app.WORKFLOW_SERVICE.mark_workflow_run_as_terminated(workflow_run_id, failure_reason)
+        await app.WORKFLOW_SERVICE.mark_workflow_run_as_terminated(
+            workflow_run_id, failure_reason
+        )
     await send_task_v2_webhook(task_v2)
     return task_v2
 
@@ -1491,7 +1658,9 @@ async def mark_task_v2_as_timed_out(
         status=TaskV2Status.timed_out,
     )
     if workflow_run_id:
-        await app.WORKFLOW_SERVICE.mark_workflow_run_as_timed_out(workflow_run_id, failure_reason)
+        await app.WORKFLOW_SERVICE.mark_workflow_run_as_timed_out(
+            workflow_run_id, failure_reason
+        )
     await send_task_v2_webhook(task_v2)
     return task_v2
 
@@ -1524,7 +1693,9 @@ def _get_extracted_data_from_block_result(
         # if loop task has data extraction, add it to the task history
         # WARNING: the assumption here is that the output_paremeter_value is a list of list of dicts
         #          output_parameter_value data structure is not consistent across all the blocks
-        if block_result.output_parameter_value and isinstance(block_result.output_parameter_value, list):
+        if block_result.output_parameter_value and isinstance(
+            block_result.output_parameter_value, list
+        ):
             loop_output_overall = []
             for inner_loop_output in block_result.output_parameter_value:
                 inner_loop_output_overall = []
@@ -1558,8 +1729,13 @@ def _get_extracted_data_from_block_result(
                         )
                         continue
                     else:
-                        if "extracted_information" in output_value and output_value["extracted_information"]:
-                            inner_loop_output_overall.append(output_value["extracted_information"])
+                        if (
+                            "extracted_information" in output_value
+                            and output_value["extracted_information"]
+                        ):
+                            inner_loop_output_overall.append(
+                                output_value["extracted_information"]
+                            )
                 loop_output_overall.append(inner_loop_output_overall)
             return loop_output_overall if loop_output_overall else None
     return None
@@ -1650,8 +1826,12 @@ async def build_task_v2_run_response(task_v2: TaskV2) -> TaskRunResponse:
         created_at=task_v2.created_at,
         modified_at=task_v2.modified_at,
         recording_url=workflow_run_resp.recording_url if workflow_run_resp else None,
-        screenshot_urls=workflow_run_resp.screenshot_urls if workflow_run_resp else None,
-        downloaded_files=workflow_run_resp.downloaded_files if workflow_run_resp else None,
+        screenshot_urls=(
+            workflow_run_resp.screenshot_urls if workflow_run_resp else None
+        ),
+        downloaded_files=(
+            workflow_run_resp.downloaded_files if workflow_run_resp else None
+        ),
         app_url=app_url,
         run_request=TaskRunRequest(
             engine=RunEngine.skyvern_v2,
@@ -1686,12 +1866,16 @@ async def send_task_v2_webhook(task_v2: TaskV2) -> None:
     try:
         # build the task v2 response with backward compatible data
         task_run_response = await build_task_v2_run_response(task_v2)
-        task_run_response_json = task_run_response.model_dump_json(exclude={"run_request"})
+        task_run_response_json = task_run_response.model_dump_json(
+            exclude={"run_request"}
+        )
         payload_json = task_v2.model_dump_json(by_alias=True)
         payload_dict = json.loads(payload_json)
         payload_dict.update(json.loads(task_run_response_json))
         payload = json.dumps(payload_dict, separators=(",", ":"), ensure_ascii=False)
-        headers = generate_skyvern_webhook_headers(payload=payload, api_key=api_key.token)
+        headers = generate_skyvern_webhook_headers(
+            payload=payload, api_key=api_key.token
+        )
         LOG.info(
             "Sending task v2 response to webhook callback url",
             task_v2_id=task_v2.observer_cruise_id,
@@ -1700,7 +1884,10 @@ async def send_task_v2_webhook(task_v2: TaskV2) -> None:
             headers=headers,
         )
         resp = await httpx.AsyncClient().post(
-            task_v2.webhook_callback_url, data=payload, headers=headers, timeout=httpx.Timeout(30.0)
+            task_v2.webhook_callback_url,
+            data=payload,
+            headers=headers,
+            timeout=httpx.Timeout(30.0),
         )
         if resp.status_code >= 200 and resp.status_code < 300:
             LOG.info(

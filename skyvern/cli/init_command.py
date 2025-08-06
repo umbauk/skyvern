@@ -19,7 +19,9 @@ from .mcp import setup_local_organization, setup_mcp
 
 
 def init(
-    no_postgres: bool = typer.Option(False, "--no-postgres", help="Skip starting PostgreSQL container"),
+    no_postgres: bool = typer.Option(
+        False, "--no-postgres", help="Skip starting PostgreSQL container"
+    ),
 ) -> None:
     """Interactive initialization command for Skyvern."""
     console.print(
@@ -43,12 +45,16 @@ def init(
         migrate_db()
         console.print("✅ [green]Database migration complete.[/green]")
 
-        console.print("🔑 [bold blue]Generating local organization API key...[/bold blue]")
+        console.print(
+            "🔑 [bold blue]Generating local organization API key...[/bold blue]"
+        )
         api_key = asyncio.run(setup_local_organization())
         if api_key:
             console.print("✅ [green]Local organization API key generated.[/green]")
         else:
-            console.print("[red]Failed to generate local organization API key. Please check server logs.[/red]")
+            console.print(
+                "[red]Failed to generate local organization API key. Please check server logs.[/red]"
+            )
 
         if os.path.exists(".env"):
             console.print("💡 [.env] file already exists.", style="yellow")
@@ -59,7 +65,9 @@ def init(
             if not redo_llm_setup:
                 console.print("[green]Skipping LLM setup.[/green]")
             else:
-                console.print("\n[bold blue]Initializing .env file for LLM providers...[/bold blue]")
+                console.print(
+                    "\n[bold blue]Initializing .env file for LLM providers...[/bold blue]"
+                )
                 setup_llm_providers()
         else:
             console.print("\n[bold blue]Initializing .env file...[/bold blue]")
@@ -74,11 +82,15 @@ def init(
             update_or_add_env_var("BROWSER_REMOTE_DEBUGGING_URL", remote_debugging_url)
         console.print("✅ [green]Browser configuration complete.[/green]")
 
-        console.print("🌐 [bold blue]Setting Skyvern Base URL to: http://localhost:8000[/bold blue]")
+        console.print(
+            "🌐 [bold blue]Setting Skyvern Base URL to: http://localhost:8000[/bold blue]"
+        )
         update_or_add_env_var("SKYVERN_BASE_URL", "http://localhost:8000")
 
         console.print("\n[bold yellow]To run Skyvern you can either:[/bold yellow]")
-        console.print("• [green]skyvern run server[/green]  (reuses the DB we just created)")
+        console.print(
+            "• [green]skyvern run server[/green]  (reuses the DB we just created)"
+        )
         console.print(
             "• [cyan]docker compose up -d[/cyan]  (starts a new Postgres inside Compose; you may stop the first container with: [magenta]docker rm -f postgresql-container[/magenta])"
         )
@@ -86,8 +98,17 @@ def init(
             "\n[italic]Only one Postgres container can run on the host's port 5432 at a time. If you switch to Docker Compose, remove the original with:[/italic] [magenta]docker rm -f postgresql-container[/magenta]"
         )
     else:
-        console.print(Panel("[bold purple]Cloud Deployment Setup[/bold purple]", border_style="purple"))
-        base_url = Prompt.ask("Enter Skyvern base URL", default="https://api.skyvern.com", show_default=True)
+        console.print(
+            Panel(
+                "[bold purple]Cloud Deployment Setup[/bold purple]",
+                border_style="purple",
+            )
+        )
+        base_url = Prompt.ask(
+            "Enter Skyvern base URL",
+            default="https://api.skyvern.com",
+            show_default=True,
+        )
         if not base_url:
             base_url = "https://api.skyvern.com"
 
@@ -100,17 +121,24 @@ def init(
             console.print("[red]API key is required.[/red]")
             api_key = Prompt.ask("Please re-enter your Skyvern API key", password=True)
             if not api_key:
-                console.print("[bold red]Error: API key cannot be empty. Aborting initialization.[/bold red]")
+                console.print(
+                    "[bold red]Error: API key cannot be empty. Aborting initialization.[/bold red]"
+                )
                 return
         update_or_add_env_var("SKYVERN_BASE_URL", base_url)
 
-    analytics_id_input = Prompt.ask("Please enter your email for analytics (press enter to skip)", default="")
+    analytics_id_input = Prompt.ask(
+        "Please enter your email for analytics (press enter to skip)", default=""
+    )
     analytics_id = analytics_id_input if analytics_id_input else str(uuid.uuid4())
     update_or_add_env_var("ANALYTICS_ID", analytics_id)
     update_or_add_env_var("SKYVERN_API_KEY", api_key)
     console.print("✅ [green].env file has been initialized.[/green]")
 
-    if Confirm.ask("\nWould you like to [bold yellow]configure the MCP server[/bold yellow]?", default=True):
+    if Confirm.ask(
+        "\nWould you like to [bold yellow]configure the MCP server[/bold yellow]?",
+        default=True,
+    ):
         setup_mcp()
 
         if not run_local:
@@ -121,10 +149,15 @@ def init(
     if run_local:
         console.print("\n⬇️ [bold blue]Installing Chromium browser...[/bold blue]")
         with Progress(
-            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True, console=console
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+            console=console,
         ) as progress:
-            progress.add_task("[bold blue]Downloading Chromium, this may take a moment...", total=None)
-            subprocess.run(["playwright", "install", "chromium"], check=True)
+            progress.add_task(
+                "[bold blue]Downloading Chromium, this may take a moment...", total=None
+            )
+            subprocess.run(["patchright", "install", "chromium"], check=True)
         console.print("✅ [green]Chromium installation complete.[/green]")
 
         console.print("\n🎉 [bold green]Skyvern setup complete![/bold green]")
@@ -145,8 +178,13 @@ def init_browser() -> None:
 
     console.print("\n⬇️ [bold blue]Installing Chromium browser...[/bold blue]")
     with Progress(
-        SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True, console=console
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+        console=console,
     ) as progress:
-        progress.add_task("[bold blue]Downloading Chromium, this may take a moment...", total=None)
-        subprocess.run(["playwright", "install", "chromium"], check=True)
+        progress.add_task(
+            "[bold blue]Downloading Chromium, this may take a moment...", total=None
+        )
+        subprocess.run(["patchright", "install", "chromium"], check=True)
     console.print("✅ [green]Chromium installation complete.[/green]")

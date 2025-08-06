@@ -1,6 +1,6 @@
 from typing import Any
 
-from playwright.async_api import async_playwright
+from patchright.async_api import async_playwright
 
 from skyvern.core.code_generations.skyvern_page import RunContext, SkyvernPage
 from skyvern.forge.sdk.core import skyvern_context
@@ -11,7 +11,7 @@ from skyvern.webeye.browser_factory import BrowserContextFactory
 async def setup(parameters: dict[str, Any]) -> tuple[SkyvernPage, RunContext]:
     # set up skyvern context
     skyvern_context.set(skyvern_context.SkyvernContext())
-    # start playwright
+    # start patchright
     pw = await async_playwright().start()
     (
         browser_context,

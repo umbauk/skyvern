@@ -3,11 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import structlog
-from playwright._impl._errors import TargetClosedError
+from patchright._impl._errors import TargetClosedError
 
 from skyvern.forge.sdk.db.client import AgentDB
 from skyvern.forge.sdk.db.polls import wait_on_persistent_browser_address
-from skyvern.forge.sdk.schemas.persistent_browser_sessions import PersistentBrowserSession
+from skyvern.forge.sdk.schemas.persistent_browser_sessions import (
+    PersistentBrowserSession,
+)
 from skyvern.webeye.browser_factory import BrowserState
 
 LOG = structlog.get_logger()
@@ -57,7 +59,9 @@ class PersistentSessionsManager:
         )
 
         if persistent_browser_session is None:
-            raise Exception(f"Persistent browser session not found for {browser_session_id}")
+            raise Exception(
+                f"Persistent browser session not found for {browser_session_id}"
+            )
 
         await self.occupy_browser_session(
             session_id=browser_session_id,
@@ -68,11 +72,17 @@ class PersistentSessionsManager:
 
         LOG.info("Browser session begin", browser_session_id=browser_session_id)
 
-    async def get_browser_address(self, session_id: str, organization_id: str) -> tuple[str, str, str]:
-        address = await wait_on_persistent_browser_address(self.database, session_id, organization_id)
+    async def get_browser_address(
+        self, session_id: str, organization_id: str
+    ) -> tuple[str, str, str]:
+        address = await wait_on_persistent_browser_address(
+            self.database, session_id, organization_id
+        )
 
         if address is None:
-            raise Exception(f"Browser address not found for persistent browser session {session_id}")
+            raise Exception(
+                f"Browser address not found for persistent browser session {session_id}"
+            )
 
         protocol = "http"
         host, cdp_port = address.split(":")
@@ -83,20 +93,32 @@ class PersistentSessionsManager:
         self, runnable_id: str, organization_id: str
     ) -> PersistentBrowserSession | None:
         """Get a specific browser session by runnable ID."""
-        return await self.database.get_persistent_browser_session_by_runnable_id(runnable_id, organization_id)
+        return await self.database.get_persistent_browser_session_by_runnable_id(
+            runnable_id, organization_id
+        )
 
-    async def get_active_sessions(self, organization_id: str) -> list[PersistentBrowserSession]:
+    async def get_active_sessions(
+        self, organization_id: str
+    ) -> list[PersistentBrowserSession]:
         """Get all active sessions for an organization."""
-        return await self.database.get_active_persistent_browser_sessions(organization_id)
+        return await self.database.get_active_persistent_browser_sessions(
+            organization_id
+        )
 
-    async def get_browser_state(self, session_id: str, organization_id: str | None = None) -> BrowserState | None:
+    async def get_browser_state(
+        self, session_id: str, organization_id: str | None = None
+    ) -> BrowserState | None:
         """Get a specific browser session's state by session ID."""
         browser_session = self._browser_sessions.get(session_id)
         return browser_session.browser_state if browser_session else None
 
-    async def get_session(self, session_id: str, organization_id: str) -> PersistentBrowserSession | None:
+    async def get_session(
+        self, session_id: str, organization_id: str
+    ) -> PersistentBrowserSession | None:
         """Get a specific browser session by session ID."""
-        return await self.database.get_persistent_browser_session(session_id, organization_id)
+        return await self.database.get_persistent_browser_session(
+            session_id, organization_id
+        )
 
     async def create_session(
         self,
@@ -146,18 +168,28 @@ class PersistentSessionsManager:
             )
         return None, None
 
-    async def release_browser_session(self, session_id: str, organization_id: str) -> None:
+    async def release_browser_session(
+        self, session_id: str, organization_id: str
+    ) -> None:
         """Release a specific browser session."""
-        await self.database.release_persistent_browser_session(session_id, organization_id)
+        await self.database.release_persistent_browser_session(
+            session_id, organization_id
+        )
 
-    async def _clean_up_on_session_close(self, session_id: str, organization_id: str) -> None:
+    async def _clean_up_on_session_close(
+        self, session_id: str, organization_id: str
+    ) -> None:
         """Clean up session data when browser session is closed"""
         browser_session = self._browser_sessions.get(session_id)
         if browser_session:
-            await self.database.mark_persistent_browser_session_deleted(session_id, organization_id)
+            await self.database.mark_persistent_browser_session_deleted(
+                session_id, organization_id
+            )
             self._browser_sessions.pop(session_id, None)
 
-    async def close_session(self, organization_id: str, browser_session_id: str) -> None:
+    async def close_session(
+        self, organization_id: str, browser_session_id: str
+    ) -> None:
         """Close a specific browser session."""
         browser_session = self._browser_sessions.get(browser_session_id)
         if browser_session:
@@ -190,20 +222,30 @@ class PersistentSessionsManager:
                 session_id=browser_session_id,
             )
 
-        await self.database.mark_persistent_browser_session_deleted(browser_session_id, organization_id)
+        await self.database.mark_persistent_browser_session_deleted(
+            browser_session_id, organization_id
+        )
 
     async def close_all_sessions(self, organization_id: str) -> None:
         """Close all browser sessions for an organization."""
-        browser_sessions = await self.database.get_active_persistent_browser_sessions(organization_id)
+        browser_sessions = await self.database.get_active_persistent_browser_sessions(
+            organization_id
+        )
         for browser_session in browser_sessions:
-            await self.close_session(organization_id, browser_session.persistent_browser_session_id)
+            await self.close_session(
+                organization_id, browser_session.persistent_browser_session_id
+            )
 
     @classmethod
     async def close(cls) -> None:
         """Close all browser sessions across all organizations."""
         LOG.info("Closing PersistentSessionsManager")
         if cls.instance:
-            active_sessions = await cls.instance.database.get_all_active_persistent_browser_sessions()
+            active_sessions = (
+                await cls.instance.database.get_all_active_persistent_browser_sessions()
+            )
             for db_session in active_sessions:
-                await cls.instance.close_session(db_session.organization_id, db_session.persistent_browser_session_id)
+                await cls.instance.close_session(
+                    db_session.organization_id, db_session.persistent_browser_session_id
+                )
         LOG.info("PersistentSessionsManager is closed")

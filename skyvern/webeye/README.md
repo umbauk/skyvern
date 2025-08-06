@@ -10,7 +10,7 @@
 
 # WebHuman Automation Tool
 
-WebHuman is a Python-based automation tool that uses Playwright to interact with web pages.
+WebHuman is a Python-based automation tool that uses Patchright to interact with web pages.
 
 ## Getting Started
 
@@ -19,6 +19,7 @@ These instructions will get you a copy of the project up and running on your loc
 ### Prerequisites
 
 Before you begin, ensure you have the following installed:
+
 - [Python 3.11](https://www.python.org/downloads/)
 - [Poetry](https://python-poetry.org/docs/#installation)
 
@@ -30,13 +31,14 @@ Before you begin, ensure you have the following installed:
    git clone https://your-repository-url.git
    cd webhuman
    ```
+
 2. **Install dependencies**
 
    ```sh
     poetry install
-    ```
+   ```
 
-3. *Define the following environment variables*
+3. _Define the following environment variables_
 
    ```sh
    export

@@ -2,7 +2,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from zoneinfo import ZoneInfo
 
-from playwright.async_api import Frame
+from patchright.async_api import Frame
 
 
 @dataclass

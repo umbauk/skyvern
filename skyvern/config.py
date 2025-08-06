@@ -5,7 +5,9 @@ from skyvern.constants import SKYVERN_DIR
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=(".env", ".env.staging", ".env.prod"), extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(".env", ".env.staging", ".env.prod"), extra="ignore"
+    )
 
     ADDITIONAL_MODULES: list[str] = []
 
@@ -298,13 +300,19 @@ class Settings(BaseSettings):
 
         if self.is_cloud_environment():
             return {
-                "gemini-2.5-pro-preview-05-06": {"llm_key": "VERTEX_GEMINI_2.5_PRO", "label": "Gemini 2.5 Pro"},
+                "gemini-2.5-pro-preview-05-06": {
+                    "llm_key": "VERTEX_GEMINI_2.5_PRO",
+                    "label": "Gemini 2.5 Pro",
+                },
                 "gemini-2.5-flash-preview-05-20": {
                     "llm_key": "VERTEX_GEMINI_2.5_FLASH",
                     "label": "Gemini 2.5 Flash",
                 },
                 "azure/gpt-4.1": {"llm_key": "AZURE_OPENAI_GPT4_1", "label": "GPT 4.1"},
-                "azure/o4-mini": {"llm_key": "AZURE_OPENAI_O4_MINI", "label": "GPT O4 Mini"},
+                "azure/o4-mini": {
+                    "llm_key": "AZURE_OPENAI_O4_MINI",
+                    "label": "GPT O4 Mini",
+                },
                 "us.anthropic.claude-opus-4-20250514-v1:0": {
                     "llm_key": "BEDROCK_ANTHROPIC_CLAUDE4_OPUS_INFERENCE_PROFILE",
                     "label": "Anthropic Claude 4 Opus",
@@ -317,13 +325,19 @@ class Settings(BaseSettings):
         else:
             # TODO: apparently the list for OSS is to be much larger
             return {
-                "gemini-2.5-pro-preview-05-06": {"llm_key": "VERTEX_GEMINI_2.5_PRO", "label": "Gemini 2.5 Pro"},
+                "gemini-2.5-pro-preview-05-06": {
+                    "llm_key": "VERTEX_GEMINI_2.5_PRO",
+                    "label": "Gemini 2.5 Pro",
+                },
                 "gemini-2.5-flash-preview-05-20": {
                     "llm_key": "VERTEX_GEMINI_2.5_FLASH",
                     "label": "Gemini 2.5 Flash",
                 },
                 "azure/gpt-4.1": {"llm_key": "AZURE_OPENAI_GPT4_1", "label": "GPT 4.1"},
-                "azure/o4-mini": {"llm_key": "AZURE_OPENAI_O4_MINI", "label": "GPT O4 Mini"},
+                "azure/o4-mini": {
+                    "llm_key": "AZURE_OPENAI_O4_MINI",
+                    "label": "GPT O4 Mini",
+                },
                 "us.anthropic.claude-opus-4-20250514-v1:0": {
                     "llm_key": "BEDROCK_ANTHROPIC_CLAUDE4_OPUS_INFERENCE_PROFILE",
                     "label": "Anthropic Claude 4 Opus",

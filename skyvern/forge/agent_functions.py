@@ -5,11 +5,15 @@ from datetime import timedelta
 from typing import Dict, List
 
 import structlog
-from playwright.async_api import Frame, Page
+from patchright.async_api import Frame, Page
 
 from skyvern.config import settings
 from skyvern.constants import SKYVERN_ID_ATTR
-from skyvern.exceptions import DisabledBlockExecutionError, StepUnableToExecuteError, TaskAlreadyTimeout
+from skyvern.exceptions import (
+    DisabledBlockExecutionError,
+    StepUnableToExecuteError,
+    TaskAlreadyTimeout,
+)
 from skyvern.forge import app
 from skyvern.forge.async_operations import AsyncOperation
 from skyvern.forge.prompts import prompt_engine
@@ -21,7 +25,11 @@ from skyvern.forge.sdk.schemas.tasks import Task, TaskStatus
 from skyvern.forge.sdk.trace import TraceManager
 from skyvern.forge.sdk.workflow.models.block import BlockTypeVar
 from skyvern.webeye.browser_factory import BrowserState
-from skyvern.webeye.scraper.scraper import ELEMENT_NODE_ATTRIBUTES, CleanupElementTreeFunc, json_to_html
+from skyvern.webeye.scraper.scraper import (
+    ELEMENT_NODE_ATTRIBUTES,
+    CleanupElementTreeFunc,
+    json_to_html,
+)
 from skyvern.webeye.utils.dom import SkyvernElement
 from skyvern.webeye.utils.page import SkyvernFrame
 
@@ -148,7 +156,9 @@ async def _check_svg_eligibility(
     element_id = element.get("id", "")
 
     try:
-        locater = skyvern_frame.get_frame().locator(f'[{SKYVERN_ID_ATTR}="{element_id}"]')
+        locater = skyvern_frame.get_frame().locator(
+            f'[{SKYVERN_ID_ATTR}="{element_id}"]'
+        )
         if await locater.count() == 0:
             _mark_element_as_dropped(element, hashed_key=None)
             return False
@@ -157,7 +167,9 @@ async def _check_svg_eligibility(
             _mark_element_as_dropped(element, hashed_key=None)
             return False
 
-        skyvern_element = SkyvernElement(locator=locater, frame=skyvern_frame.get_frame(), static_element=element)
+        skyvern_element = SkyvernElement(
+            locator=locater, frame=skyvern_frame.get_frame(), static_element=element
+        )
 
         _, blocked = await skyvern_frame.get_blocking_element_id(
             await skyvern_element.get_element_handler(timeout=1000)
@@ -206,10 +218,16 @@ async def _convert_svg_to_string(
         )
 
     if svg_shape:
-        LOG.debug("SVG loaded from cache", element_id=element_id, key=svg_key, shape=svg_shape)
+        LOG.debug(
+            "SVG loaded from cache", element_id=element_id, key=svg_key, shape=svg_shape
+        )
     else:
         if _is_element_already_dropped(svg_key):
-            LOG.debug("SVG is already dropped, going to abort conversion", element_id=element_id, key=svg_key)
+            LOG.debug(
+                "SVG is already dropped, going to abort conversion",
+                element_id=element_id,
+                key=svg_key,
+            )
             _mark_element_as_dropped(element, hashed_key=svg_key)
             return
 
@@ -227,7 +245,9 @@ async def _convert_svg_to_string(
             return
 
         LOG.debug("call LLM to convert SVG to string shape", element_id=element_id)
-        svg_convert_prompt = prompt_engine.load_prompt("svg-convert", svg_element=svg_html)
+        svg_convert_prompt = prompt_engine.load_prompt(
+            "svg-convert", svg_element=svg_html
+        )
 
         for retry in range(SVG_SHAPE_CONVERTION_ATTEMPTS):
             try:
@@ -238,8 +258,15 @@ async def _convert_svg_to_string(
                 svg_shape = json_response.get("shape", "")
                 recognized = json_response.get("recognized", False)
                 if not svg_shape or not recognized:
-                    raise Exception("Empty or unrecognized SVG shape replied by secondary llm")
-                LOG.info("SVG converted by LLM", element_id=element_id, key=svg_key, shape=svg_shape)
+                    raise Exception(
+                        "Empty or unrecognized SVG shape replied by secondary llm"
+                    )
+                LOG.info(
+                    "SVG converted by LLM",
+                    element_id=element_id,
+                    key=svg_key,
+                    shape=svg_shape,
+                )
                 await app.CACHE.set(svg_key, svg_shape)
                 break
             except LLMProviderError:
@@ -329,13 +356,24 @@ async def _convert_css_shape_to_string(
         )
 
     if css_shape:
-        LOG.debug("CSS shape loaded from cache", element_id=element_id, key=shape_key, shape=css_shape)
+        LOG.debug(
+            "CSS shape loaded from cache",
+            element_id=element_id,
+            key=shape_key,
+            shape=css_shape,
+        )
     else:
         if _is_element_already_dropped(shape_key):
-            LOG.debug("CSS shape is already dropped, going to abort conversion", element_id=element_id, key=shape_key)
+            LOG.debug(
+                "CSS shape is already dropped, going to abort conversion",
+                element_id=element_id,
+                key=shape_key,
+            )
             return None
         try:
-            locater = skyvern_frame.get_frame().locator(f'[{SKYVERN_ID_ATTR}="{element_id}"]')
+            locater = skyvern_frame.get_frame().locator(
+                f'[{SKYVERN_ID_ATTR}="{element_id}"]'
+            )
             if await locater.count() == 0:
                 LOG.info(
                     "No locater found to convert css shape",
@@ -355,9 +393,13 @@ async def _convert_css_shape_to_string(
                     key=shape_key,
                 )
 
-            skyvern_element = SkyvernElement(locator=locater, frame=skyvern_frame.get_frame(), static_element=element)
+            skyvern_element = SkyvernElement(
+                locator=locater, frame=skyvern_frame.get_frame(), static_element=element
+            )
 
-            _, blocked = await skyvern_frame.get_blocking_element_id(await skyvern_element.get_element_handler())
+            _, blocked = await skyvern_frame.get_blocking_element_id(
+                await skyvern_element.get_element_handler()
+            )
             if blocked:
                 LOG.debug(
                     "element is blocked by another element, going to abort conversion",
@@ -369,8 +411,12 @@ async def _convert_css_shape_to_string(
                 return None
 
             try:
-                await locater.scroll_into_view_if_needed(timeout=settings.BROWSER_ACTION_TIMEOUT_MS)
-                await locater.wait_for(state="visible", timeout=settings.BROWSER_ACTION_TIMEOUT_MS)
+                await locater.scroll_into_view_if_needed(
+                    timeout=settings.BROWSER_ACTION_TIMEOUT_MS
+                )
+                await locater.wait_for(
+                    state="visible", timeout=settings.BROWSER_ACTION_TIMEOUT_MS
+                )
             except Exception:
                 LOG.info(
                     "Failed to make the element visible, going to abort conversion",
@@ -382,8 +428,12 @@ async def _convert_css_shape_to_string(
                 )
                 return None
 
-            LOG.debug("call LLM to convert css shape to string shape", element_id=element_id)
-            screenshot = await locater.screenshot(timeout=settings.BROWSER_ACTION_TIMEOUT_MS, animations="disabled")
+            LOG.debug(
+                "call LLM to convert css shape to string shape", element_id=element_id
+            )
+            screenshot = await locater.screenshot(
+                timeout=settings.BROWSER_ACTION_TIMEOUT_MS, animations="disabled"
+            )
             prompt = prompt_engine.load_prompt("css-shape-convert")
 
             # TODO: we don't retry the css shape conversion today
@@ -391,13 +441,23 @@ async def _convert_css_shape_to_string(
                 try:
                     async with asyncio.timeout(_LLM_CALL_TIMEOUT_SECONDS):
                         json_response = await app.SECONDARY_LLM_API_HANDLER(
-                            prompt=prompt, screenshots=[screenshot], step=step, prompt_name="css-shape-convert"
+                            prompt=prompt,
+                            screenshots=[screenshot],
+                            step=step,
+                            prompt_name="css-shape-convert",
                         )
                     css_shape = json_response.get("shape", "")
                     recognized = json_response.get("recognized", False)
                     if not css_shape or not recognized:
-                        raise Exception("Empty or unrecognized css shape replied by secondary llm")
-                    LOG.info("CSS Shape converted by LLM", element_id=element_id, key=shape_key, shape=css_shape)
+                        raise Exception(
+                            "Empty or unrecognized css shape replied by secondary llm"
+                        )
+                    LOG.info(
+                        "CSS Shape converted by LLM",
+                        element_id=element_id,
+                        key=shape_key,
+                        shape=css_shape,
+                    )
                     await app.CACHE.set(shape_key, css_shape)
                     break
                 except LLMProviderError:
@@ -412,7 +472,9 @@ async def _convert_css_shape_to_string(
                     )
                     if retry == CSS_SHAPE_CONVERTION_ATTEMPTS - 1:
                         # set the invalid css shape to cache to avoid retry in the near future
-                        await app.CACHE.set(shape_key, INVALID_SHAPE, ex=timedelta(hours=1))
+                        await app.CACHE.set(
+                            shape_key, INVALID_SHAPE, ex=timedelta(hours=1)
+                        )
                     await asyncio.sleep(3)
                 except asyncio.TimeoutError:
                     LOG.warning(
@@ -434,7 +496,9 @@ async def _convert_css_shape_to_string(
                     )
                     if retry == CSS_SHAPE_CONVERTION_ATTEMPTS - 1:
                         # set the invalid css shape to cache to avoid retry in the near future
-                        await app.CACHE.set(shape_key, INVALID_SHAPE, ex=timedelta(weeks=1))
+                        await app.CACHE.set(
+                            shape_key, INVALID_SHAPE, ex=timedelta(weeks=1)
+                        )
                     await asyncio.sleep(3)
             else:
                 LOG.info(
@@ -490,22 +554,37 @@ class AgentFunction:
         if not has_valid_step_status:
             reasons.append(f"invalid_step_status:{step.status}")
         # can't execute if the task has another step that is running
-        steps = await app.DATABASE.get_task_steps(task_id=task.task_id, organization_id=task.organization_id)
-        has_no_running_steps = not any(step.status == StepStatus.running for step in steps)
+        steps = await app.DATABASE.get_task_steps(
+            task_id=task.task_id, organization_id=task.organization_id
+        )
+        has_no_running_steps = not any(
+            step.status == StepStatus.running for step in steps
+        )
         if not has_no_running_steps:
             reasons.append(f"another_step_is_running_for_task:{task.task_id}")
 
-        can_execute = has_valid_task_status and has_valid_step_status and has_no_running_steps
+        can_execute = (
+            has_valid_task_status and has_valid_step_status and has_no_running_steps
+        )
         if not can_execute:
-            raise StepUnableToExecuteError(step_id=step.step_id, reason=f"Cannot execute step. Reasons: {reasons}")
+            raise StepUnableToExecuteError(
+                step_id=step.step_id, reason=f"Cannot execute step. Reasons: {reasons}"
+            )
 
     async def validate_block_execution(
-        self, block: BlockTypeVar, workflow_run_id: str, workflow_run_block_id: str, organization_id: str | None
+        self,
+        block: BlockTypeVar,
+        workflow_run_id: str,
+        workflow_run_block_id: str,
+        organization_id: str | None,
     ) -> None:
         return
 
     async def validate_task_execution(
-        self, organization_id: str, task_id: str | None = None, task_version: str | None = None
+        self,
+        organization_id: str,
+        task_id: str | None = None,
+        task_version: str | None = None,
     ) -> None:
         return
 
@@ -540,7 +619,9 @@ class AgentFunction:
         MAX_ELEMENT_CNT = 3000
 
         @TraceManager.traced_async(ignore_input=True)
-        async def cleanup_element_tree_func(frame: Page | Frame, url: str, element_tree: list[dict]) -> list[dict]:
+        async def cleanup_element_tree_func(
+            frame: Page | Frame, url: str, element_tree: list[dict]
+        ) -> list[dict]:
             """
             Remove rect and attribute.unique_id from the elements.
             The reason we're doing it is to
@@ -573,7 +654,12 @@ class AgentFunction:
 
                 if queue_ele.get("frame_index") != current_frame_index:
                     new_frame = next(
-                        (k for k, v in context.frame_index_map.items() if v == queue_ele.get("frame_index")), frame
+                        (
+                            k
+                            for k, v in context.frame_index_map.items()
+                            if v == queue_ele.get("frame_index")
+                        ),
+                        frame,
                     )
                     skyvern_frame = await SkyvernFrame.create_instance(frame=new_frame)
                     current_frame_index = queue_ele.get("frame_index", 0)
@@ -581,10 +667,14 @@ class AgentFunction:
                 _remove_rect(queue_ele)
 
                 # Check SVG eligibility and store for later conversion
-                if await _check_svg_eligibility(skyvern_frame, queue_ele, task, step, always_drop=element_exceeded):
+                if await _check_svg_eligibility(
+                    skyvern_frame, queue_ele, task, step, always_drop=element_exceeded
+                ):
                     eligible_svgs.append((queue_ele, skyvern_frame))
 
-                if not element_exceeded and _should_css_shape_convert(element=queue_ele):
+                if not element_exceeded and _should_css_shape_convert(
+                    element=queue_ele
+                ):
                     await _convert_css_shape_to_string(
                         skyvern_frame=skyvern_frame,
                         element=queue_ele,
@@ -600,7 +690,12 @@ class AgentFunction:
 
             # Convert all eligible SVGs in parallel
             if eligible_svgs:
-                await asyncio.gather(*[_convert_svg_to_string(element, task, step) for element, frame in eligible_svgs])
+                await asyncio.gather(
+                    *[
+                        _convert_svg_to_string(element, task, step)
+                        for element, frame in eligible_svgs
+                    ]
+                )
 
             return element_tree
 

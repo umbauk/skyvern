@@ -19,11 +19,22 @@ from urllib.parse import urlparse
 import aiofiles
 import psutil
 import structlog
-from playwright.async_api import BrowserContext, ConsoleMessage, Download, Page, Playwright
+from patchright.async_api import (
+    BrowserContext,
+    ConsoleMessage,
+    Download,
+    Page,
+    Playwright,
+)
 from pydantic import BaseModel, PrivateAttr
 
 from skyvern.config import settings
-from skyvern.constants import BROWSER_CLOSE_TIMEOUT, BROWSER_DOWNLOAD_TIMEOUT, NAVIGATION_MAX_RETRY_TIME, SKYVERN_DIR
+from skyvern.constants import (
+    BROWSER_CLOSE_TIMEOUT,
+    BROWSER_DOWNLOAD_TIMEOUT,
+    NAVIGATION_MAX_RETRY_TIME,
+    SKYVERN_DIR,
+)
 from skyvern.exceptions import (
     FailedToNavigateToUrl,
     FailedToReloadPage,
@@ -43,7 +54,9 @@ LOG = structlog.get_logger()
 BrowserCleanupFunc = Callable[[], None] | None
 
 
-def set_browser_console_log(browser_context: BrowserContext, browser_artifacts: BrowserArtifacts) -> None:
+def set_browser_console_log(
+    browser_context: BrowserContext, browser_artifacts: BrowserArtifacts
+) -> None:
     if browser_artifacts.browser_console_log_path is None:
         log_path = f"{settings.LOG_PATH}/{datetime.utcnow().strftime('%Y-%m-%d')}/{uuid.uuid4()}.log"
         try:
@@ -66,7 +79,10 @@ def set_browser_console_log(browser_context: BrowserContext, browser_artifacts: 
         format_log = f"{current_time}[{msg.type}]{msg.text} {key_values}\n"
         await browser_artifacts.append_browser_console_log(format_log)
 
-    LOG.info("browser console log is saved", log_path=browser_artifacts.browser_console_log_path)
+    LOG.info(
+        "browser console log is saved",
+        log_path=browser_artifacts.browser_console_log_path,
+    )
     browser_context.on("console", browser_console_log)
 
 
@@ -136,7 +152,10 @@ def initialize_download_dir() -> str:
 
 class BrowserContextCreator(Protocol):
     def __call__(
-        self, playwright: Playwright, proxy_location: ProxyLocation | None = None, **kwargs: dict[str, Any]
+        self,
+        playwright: Playwright,
+        proxy_location: ProxyLocation | None = None,
+        **kwargs: dict[str, Any],
     ) -> Awaitable[tuple[BrowserContext, BrowserArtifacts, BrowserCleanupFunc]]: ...
 
 
@@ -154,7 +173,9 @@ class BrowserContextFactory:
         return str(uuid.uuid4())
 
     @staticmethod
-    def update_chromium_browser_preferences(user_data_dir: str, download_dir: str) -> None:
+    def update_chromium_browser_preferences(
+        user_data_dir: str, download_dir: str
+    ) -> None:
         preference_dst_folder = f"{user_data_dir}/Default"
         os.makedirs(preference_dst_folder, exist_ok=True)
 
@@ -164,8 +185,12 @@ class BrowserContextFactory:
         preference_file_content = ""
         with open(preference_template) as f:
             preference_file_content = f.read()
-            preference_file_content = preference_file_content.replace("MASK_SAVEFILE_DEFAULT_DIRECTORY", download_dir)
-            preference_file_content = preference_file_content.replace("MASK_DOWNLOAD_DEFAULT_DIRECTORY", download_dir)
+            preference_file_content = preference_file_content.replace(
+                "MASK_SAVEFILE_DEFAULT_DIRECTORY", download_dir
+            )
+            preference_file_content = preference_file_content.replace(
+                "MASK_DOWNLOAD_DEFAULT_DIRECTORY", download_dir
+            )
         with open(preference_dst_file, "w") as f:
             f.write(preference_file_content)
 
@@ -176,17 +201,20 @@ class BrowserContextFactory:
         extra_http_headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         video_dir = f"{settings.VIDEO_PATH}/{datetime.utcnow().strftime('%Y-%m-%d')}"
-        har_dir = (
-            f"{settings.HAR_PATH}/{datetime.utcnow().strftime('%Y-%m-%d')}/{BrowserContextFactory.get_subdir()}.har"
-        )
+        har_dir = f"{settings.HAR_PATH}/{datetime.utcnow().strftime('%Y-%m-%d')}/{BrowserContextFactory.get_subdir()}.har"
 
         extension_paths = []
         if settings.EXTENSIONS and settings.EXTENSIONS_BASE_PATH:
             try:
                 os.makedirs(settings.EXTENSIONS_BASE_PATH, exist_ok=True)
 
-                extension_paths = [str(Path(settings.EXTENSIONS_BASE_PATH) / ext) for ext in settings.EXTENSIONS]
-                LOG.info("Extensions paths constructed", extension_paths=extension_paths)
+                extension_paths = [
+                    str(Path(settings.EXTENSIONS_BASE_PATH) / ext)
+                    for ext in settings.EXTENSIONS
+                ]
+                LOG.info(
+                    "Extensions paths constructed", extension_paths=extension_paths
+                )
             except Exception as e:
                 LOG.error("Error constructing extension paths", error=str(e))
 
@@ -202,7 +230,12 @@ class BrowserContextFactory:
 
         if extension_paths:
             joined_paths = ",".join(extension_paths)
-            browser_args.extend([f"--disable-extensions-except={joined_paths}", f"--load-extension={joined_paths}"])
+            browser_args.extend(
+                [
+                    f"--disable-extensions-except={joined_paths}",
+                    f"--load-extension={joined_paths}",
+                ]
+            )
             LOG.info("Extensions added to browser args", extensions=joined_paths)
 
         args = {
@@ -261,8 +294,12 @@ class BrowserContextFactory:
             creator = cls._creators.get(browser_type)
             if not creator:
                 raise UnknownBrowserType(browser_type)
-            browser_context, browser_artifacts, cleanup_func = await creator(playwright, **kwargs)
-            set_browser_console_log(browser_context=browser_context, browser_artifacts=browser_artifacts)
+            browser_context, browser_artifacts, cleanup_func = await creator(
+                playwright, **kwargs
+            )
+            set_browser_console_log(
+                browser_context=browser_context, browser_artifacts=browser_artifacts
+            )
             set_download_file_listener(browser_context=browser_context, **kwargs)
 
             proxy_location: ProxyLocation | None = kwargs.get("proxy_location")
@@ -274,7 +311,9 @@ class BrowserContextFactory:
         except Exception as e:
             if browser_context is not None:
                 # FIXME: sometimes it can't close the browser context?
-                LOG.error("unexpected error happens after created browser context, going to close the context")
+                LOG.error(
+                    "unexpected error happens after created browser context, going to close the context"
+                )
                 await browser_context.close()
 
             if isinstance(e, UnknownBrowserType):
@@ -322,10 +361,16 @@ def setup_proxy() -> dict | None:
         LOG.warning("No proxy server value found. Continuing without using proxy...")
         return None
 
-    proxy_servers = [server.strip() for server in settings.HOSTED_PROXY_POOL.split(",") if server.strip()]
+    proxy_servers = [
+        server.strip()
+        for server in settings.HOSTED_PROXY_POOL.split(",")
+        if server.strip()
+    ]
 
     if not proxy_servers:
-        LOG.warning("Proxy pool contains only empty values. Continuing without proxy...")
+        LOG.warning(
+            "Proxy pool contains only empty values. Continuing without proxy..."
+        )
         return None
 
     valid_proxies = []
@@ -356,7 +401,9 @@ def setup_proxy() -> dict | None:
 
 
 def _is_valid_proxy_url(url: str) -> bool:
-    PROXY_PATTERN = re.compile(r"^(http|https|socks5):\/\/([^:@]+(:[^@]*)?@)?[^\s:\/]+(:\d+)?$")
+    PROXY_PATTERN = re.compile(
+        r"^(http|https|socks5):\/\/([^:@]+(:[^@]*)?@)?[^\s:\/]+(:\d+)?$"
+    )
     try:
         parsed = urlparse(url)
         if not parsed.scheme or not parsed.netloc:
@@ -423,7 +470,9 @@ async def _create_headless_chromium(
     )
     cdp_port: int | None = _get_cdp_port(kwargs)
     browser_args = BrowserContextFactory.build_browser_args(
-        proxy_location=proxy_location, cdp_port=cdp_port, extra_http_headers=extra_http_headers
+        proxy_location=proxy_location,
+        cdp_port=cdp_port,
+        extra_http_headers=extra_http_headers,
     )
     browser_args.update(
         {
@@ -432,8 +481,12 @@ async def _create_headless_chromium(
         }
     )
 
-    browser_artifacts = BrowserContextFactory.build_browser_artifacts(har_path=browser_args["record_har_path"])
-    browser_context = await playwright.chromium.launch_persistent_context(**browser_args)
+    browser_artifacts = BrowserContextFactory.build_browser_artifacts(
+        har_path=browser_args["record_har_path"]
+    )
+    browser_context = await playwright.chromium.launch_persistent_context(
+        **browser_args
+    )
     return browser_context, browser_artifacts, None
 
 
@@ -451,7 +504,9 @@ async def _create_headful_chromium(
     )
     cdp_port: int | None = _get_cdp_port(kwargs)
     browser_args = BrowserContextFactory.build_browser_args(
-        proxy_location=proxy_location, cdp_port=cdp_port, extra_http_headers=extra_http_headers
+        proxy_location=proxy_location,
+        cdp_port=cdp_port,
+        extra_http_headers=extra_http_headers,
     )
     browser_args.update(
         {
@@ -460,8 +515,12 @@ async def _create_headful_chromium(
             "headless": False,
         }
     )
-    browser_artifacts = BrowserContextFactory.build_browser_artifacts(har_path=browser_args["record_har_path"])
-    browser_context = await playwright.chromium.launch_persistent_context(**browser_args)
+    browser_artifacts = BrowserContextFactory.build_browser_artifacts(
+        har_path=browser_args["record_har_path"]
+    )
+    browser_context = await playwright.chromium.launch_persistent_context(
+        **browser_args
+    )
     return browser_context, browser_artifacts, None
 
 
@@ -470,7 +529,9 @@ def default_user_data_dir() -> pathlib.Path:
     if p == "Darwin":
         return pathlib.Path("~/Library/Application Support/Google/Chrome").expanduser()
     if p == "Windows":
-        return pathlib.Path(os.environ["LOCALAPPDATA"]) / "Google" / "Chrome" / "User Data"
+        return (
+            pathlib.Path(os.environ["LOCALAPPDATA"]) / "Google" / "Chrome" / "User Data"
+        )
     # Assume Linux/Unix
     return pathlib.Path("~/.config/google-chrome").expanduser()
 
@@ -490,7 +551,11 @@ def is_valid_chromium_user_data_dir(directory: str) -> bool:
     default_dir = os.path.join(directory, "Default")
     preferences_file = os.path.join(default_dir, "Preferences")
 
-    return os.path.isdir(directory) and os.path.isdir(default_dir) and os.path.isfile(preferences_file)
+    return (
+        os.path.isdir(directory)
+        and os.path.isdir(default_dir)
+        and os.path.isfile(preferences_file)
+    )
 
 
 async def _create_cdp_connection_browser(
@@ -503,10 +568,15 @@ async def _create_cdp_connection_browser(
     browser_path = settings.CHROME_EXECUTABLE_PATH
 
     if browser_type == "cdp-connect" and browser_path:
-        LOG.info("Local browser path is given. Connecting to local browser with CDP", browser_path=browser_path)
+        LOG.info(
+            "Local browser path is given. Connecting to local browser with CDP",
+            browser_path=browser_path,
+        )
         # First check if the debugging port is running and can be used
         if not _is_port_in_use(9222):
-            LOG.info("Port 9222 is not in use, starting Chrome", browser_path=browser_path)
+            LOG.info(
+                "Port 9222 is not in use, starting Chrome", browser_path=browser_path
+            )
             # Check if Chrome is already running
             if _is_chrome_running():
                 raise Exception(
@@ -514,7 +584,9 @@ async def _create_cdp_connection_browser(
                 )
             # check if ./tmp/user_data_dir exists and if it's a valid Chromium user data directory
             try:
-                if os.path.exists("./tmp/user_data_dir") and not is_valid_chromium_user_data_dir("./tmp/user_data_dir"):
+                if os.path.exists(
+                    "./tmp/user_data_dir"
+                ) and not is_valid_chromium_user_data_dir("./tmp/user_data_dir"):
                     LOG.info("Removing invalid user data directory")
                     shutil.rmtree("./tmp/user_data_dir")
                     shutil.copytree(default_user_data_dir(), "./tmp/user_data_dir")
@@ -546,7 +618,9 @@ async def _create_cdp_connection_browser(
         else:
             LOG.info("Port 9222 is in use, using existing browser")
 
-    browser_args = BrowserContextFactory.build_browser_args(extra_http_headers=extra_http_headers)
+    browser_args = BrowserContextFactory.build_browser_args(
+        extra_http_headers=extra_http_headers
+    )
 
     browser_artifacts = BrowserContextFactory.build_browser_artifacts(
         har_path=browser_args["record_har_path"],
@@ -616,7 +690,9 @@ class BrowserState:
                     async with asyncio.timeout(2):
                         await page.close()
                 except asyncio.TimeoutError:
-                    LOG.warning("Timeout to close the page. Skip closing the page", url=page.url)
+                    LOG.warning(
+                        "Timeout to close the page. Skip closing the page", url=page.url
+                    )
                 except Exception:
                     LOG.exception("Error while closing the page", url=page.url)
 
@@ -657,10 +733,16 @@ class BrowserState:
             if url:
                 await self.navigate_to_url(page=page, url=url)
 
-    async def navigate_to_url(self, page: Page, url: str, retry_times: int = NAVIGATION_MAX_RETRY_TIME) -> None:
+    async def navigate_to_url(
+        self, page: Page, url: str, retry_times: int = NAVIGATION_MAX_RETRY_TIME
+    ) -> None:
         try:
             for retry_time in range(retry_times):
-                LOG.info(f"Trying to navigate to {url} and waiting for 1 second.", url=url, retry_time=retry_time)
+                LOG.info(
+                    f"Trying to navigate to {url} and waiting for 1 second.",
+                    url=url,
+                    retry_time=retry_time,
+                )
                 try:
                     start_time = time.time()
                     await page.goto(url, timeout=settings.BROWSER_LOADING_TIMEOUT_MS)
@@ -672,7 +754,9 @@ class BrowserState:
                     )
                     # Do we need this?
                     await asyncio.sleep(5)
-                    LOG.info(f"Successfully went to {url}", url=url, retry_time=retry_time)
+                    LOG.info(
+                        f"Successfully went to {url}", url=url, retry_time=retry_time
+                    )
                     return
 
                 except Exception as e:
@@ -698,7 +782,11 @@ class BrowserState:
     async def get_working_page(self) -> Page | None:
         # HACK: currently, assuming the last page is always the working page.
         # Need to refactor this logic when we want to manipulate multi pages together
-        if self.__page is None or self.browser_context is None or len(self.browser_context.pages) == 0:
+        if (
+            self.__page is None
+            or self.browser_context is None
+            or len(self.browser_context.pages) == 0
+        ):
             return None
 
         last_page = self.browser_context.pages[-1]
@@ -720,7 +808,9 @@ class BrowserState:
             return False
 
         if "Bad gateway error" in html:
-            LOG.warning("Bad gateway error on the page, recreate a new browser context with another proxy node")
+            LOG.warning(
+                "Bad gateway error on the page, recreate a new browser context with another proxy node"
+            )
             return False
 
         if "client_connect_forbidden_host" in html:
@@ -743,9 +833,13 @@ class BrowserState:
         if len(self.browser_artifacts.video_artifacts) > index:
             if self.browser_artifacts.video_artifacts[index].video_path is None:
                 try:
-                    async with asyncio.timeout(settings.BROWSER_ACTION_TIMEOUT_MS / 1000):
+                    async with asyncio.timeout(
+                        settings.BROWSER_ACTION_TIMEOUT_MS / 1000
+                    ):
                         if page.video:
-                            self.browser_artifacts.video_artifacts[index].video_path = await page.video.path()
+                            self.browser_artifacts.video_artifacts[index].video_path = (
+                                await page.video.path()
+                            )
                 except asyncio.TimeoutError:
                     LOG.info("Timeout to get the page video, skip the exception")
                 except Exception:
@@ -754,12 +848,15 @@ class BrowserState:
 
         target_lenght = index + 1
         self.browser_artifacts.video_artifacts.extend(
-            [VideoArtifact()] * (target_lenght - len(self.browser_artifacts.video_artifacts))
+            [VideoArtifact()]
+            * (target_lenght - len(self.browser_artifacts.video_artifacts))
         )
         try:
             async with asyncio.timeout(settings.BROWSER_ACTION_TIMEOUT_MS / 1000):
                 if page.video:
-                    self.browser_artifacts.video_artifacts[index].video_path = await page.video.path()
+                    self.browser_artifacts.video_artifacts[index].video_path = (
+                        await page.video.path()
+                    )
         except asyncio.TimeoutError:
             LOG.info("Timeout to get the page video, skip the exception")
         except Exception:
@@ -807,7 +904,9 @@ class BrowserState:
 
         if not await self.validate_browser_context(await self.get_working_page()):
             if not await self.close_current_open_page():
-                LOG.warning("Failed to close the current open page, going to skip the browser context validation")
+                LOG.warning(
+                    "Failed to close the current open page, going to skip the browser context validation"
+                )
                 return page
             await self.check_and_fix_state(
                 url=url,
@@ -874,26 +973,32 @@ class BrowserState:
                             self.browser_cleanup()
                             LOG.info("Main browser cleanup is excuted")
                         except Exception:
-                            LOG.warning("Failed to execute browser cleanup", exc_info=True)
+                            LOG.warning(
+                                "Failed to execute browser cleanup", exc_info=True
+                            )
         except asyncio.TimeoutError:
-            LOG.error("Timeout to close browser context, going to stop playwright directly")
+            LOG.error(
+                "Timeout to close browser context, going to stop patchright directly"
+            )
 
         try:
             async with asyncio.timeout(BROWSER_CLOSE_TIMEOUT):
                 if self.pw and close_browser_on_completion:
                     try:
-                        LOG.info("Stopping playwright")
+                        LOG.info("Stopping patchright")
                         await self.pw.stop()
-                        LOG.info("Playwright is stopped")
+                        LOG.info("Patchright is stopped")
                     except Exception:
-                        LOG.warning("Failed to stop playwright", exc_info=True)
+                        LOG.warning("Failed to stop patchright", exc_info=True)
         except asyncio.TimeoutError:
-            LOG.error("Timeout to close playwright, might leave the broswer opening forever")
+            LOG.error(
+                "Timeout to close patchright, might leave the broswer opening forever"
+            )
 
     async def take_fullpage_screenshot(
         self,
         file_path: str | None = None,
-        use_playwright_fullpage: bool = False,  # TODO: THIS IS ONLY FOR EXPERIMENT. will be removed after experiment.
+        use_playwright_fullpage: bool = False,  # TODO: THIS IS ONLY FOR EXPERIMENT. will be removed after experiment. (now using patchright)
     ) -> bytes:
         page = await self.__assert_page()
         return await SkyvernFrame.take_scrolling_screenshot(
@@ -907,7 +1012,7 @@ class BrowserState:
         self,
         scrolling_number: int,
         file_path: str | None = None,
-        use_playwright_fullpage: bool = False,  # TODO: THIS IS ONLY FOR EXPERIMENT. will be removed after experiment.
+        use_playwright_fullpage: bool = False,  # TODO: THIS IS ONLY FOR EXPERIMENT. will be removed after experiment. (now using patchright)
     ) -> bytes:
         page = await self.__assert_page()
         return await SkyvernFrame.take_scrolling_screenshot(

@@ -21,3 +21,14 @@ docker push 868807225550.dkr.ecr.us-west-1.amazonaws.com/skyvern:ui-latest
 Select your UI task definition → Create new revision
 In Container Definitions → Edit the UI container
 Update the Image URI to: 868807225550.dkr.ecr.us-west-1.amazonaws.com/skyvern:ui-latest
+
+# Shell for container
+
+```
+aws ecs execute-command \
+  --cluster skyvern-cluster \
+  --task 3e00e0af743040538f7848664fb4ae06 \
+  --container skyvern-ui \
+  --interactive \
+  --command "/bin/bash"
+```

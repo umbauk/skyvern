@@ -7,13 +7,22 @@ from enum import StrEnum
 from typing import Any, Awaitable, Callable, Self
 
 import structlog
-from playwright._impl._errors import TimeoutError
-from playwright.async_api import ElementHandle, Frame, Locator, Page
+from patchright._impl._errors import TimeoutError
+from patchright.async_api import ElementHandle, Frame, Locator, Page
 from pydantic import BaseModel, PrivateAttr
 
 from skyvern.config import settings
-from skyvern.constants import BUILDING_ELEMENT_TREE_TIMEOUT_MS, DEFAULT_MAX_TOKENS, SKYVERN_DIR, SKYVERN_ID_ATTR
-from skyvern.exceptions import FailedToTakeScreenshot, ScrapingFailed, UnknownElementTreeFormat
+from skyvern.constants import (
+    BUILDING_ELEMENT_TREE_TIMEOUT_MS,
+    DEFAULT_MAX_TOKENS,
+    SKYVERN_DIR,
+    SKYVERN_ID_ATTR,
+)
+from skyvern.exceptions import (
+    FailedToTakeScreenshot,
+    ScrapingFailed,
+    UnknownElementTreeFormat,
+)
 from skyvern.forge.sdk.api.crypto import calculate_sha256
 from skyvern.forge.sdk.core import skyvern_context
 from skyvern.forge.sdk.trace import TraceManager
@@ -23,7 +32,9 @@ from skyvern.webeye.browser_factory import BrowserState
 from skyvern.webeye.utils.page import SkyvernFrame
 
 LOG = structlog.get_logger()
-CleanupElementTreeFunc = Callable[[Page | Frame, str, list[dict]], Awaitable[list[dict]]]
+CleanupElementTreeFunc = Callable[
+    [Page | Frame, str, list[dict]], Awaitable[list[dict]]
+]
 ScrapeExcludeFunc = Callable[[Page, Frame], Awaitable[bool]]
 
 RESERVED_ATTRIBUTES = {
@@ -107,7 +118,10 @@ def json_to_html(element: dict, need_skyvern_attrs: bool = True) -> str:
         if not interactable:
             return ""
         else:
-            LOG.info("Element is interactable. Trimmed all attributes instead of dropping it", element=element)
+            LOG.info(
+                "Element is interactable. Trimmed all attributes instead of dropping it",
+                element=element,
+            )
             attributes = {}
 
     context = skyvern_context.ensure_context()
@@ -130,7 +144,9 @@ def json_to_html(element: dict, need_skyvern_attrs: bool = True) -> str:
                 continue
             attributes[attr] = value
 
-    attributes_html = " ".join(build_attribute(key, value) for key, value in attributes.items())
+    attributes_html = " ".join(
+        build_attribute(key, value) for key, value in attributes.items()
+    )
 
     if element.get("isSelectable", False):
         tag = "select"
@@ -138,7 +154,8 @@ def json_to_html(element: dict, need_skyvern_attrs: bool = True) -> str:
     text = element.get("text", "")
     # build children HTML
     children_html = "".join(
-        json_to_html(child, need_skyvern_attrs=need_skyvern_attrs) for child in element.get("children", [])
+        json_to_html(child, need_skyvern_attrs=need_skyvern_attrs)
+        for child in element.get("children", [])
     )
     # build option HTML
     option_html = "".join(
@@ -167,9 +184,17 @@ def json_to_html(element: dict, need_skyvern_attrs: bool = True) -> str:
 
 def clean_element_before_hashing(element: dict) -> dict:
     def clean_nested(element: dict) -> dict:
-        element_cleaned = {key: value for key, value in element.items() if key not in {"id", "rect", "frame_index"}}
+        element_cleaned = {
+            key: value
+            for key, value in element.items()
+            if key not in {"id", "rect", "frame_index"}
+        }
         if "attributes" in element:
-            attributes_cleaned = {key: value for key, value in element["attributes"].items() if key != SKYVERN_ID_ATTR}
+            attributes_cleaned = {
+                key: value
+                for key, value in element["attributes"].items()
+                if key != SKYVERN_ID_ATTR
+            }
             element_cleaned["attributes"] = attributes_cleaned
         if "children" in element:
             children_cleaned = [clean_nested(child) for child in element["children"]]
@@ -189,7 +214,13 @@ def hash_element(element: dict) -> str:
 
 def build_element_dict(
     elements: list[dict],
-) -> tuple[dict[str, str], dict[str, dict], dict[str, str], dict[str, str], dict[str, list[str]]]:
+) -> tuple[
+    dict[str, str],
+    dict[str, dict],
+    dict[str, str],
+    dict[str, str],
+    dict[str, list[str]],
+]:
     id_to_css_dict: dict[str, str] = {}
     id_to_element_dict: dict[str, dict] = {}
     id_to_frame_dict: dict[str, str] = {}
@@ -204,9 +235,17 @@ def build_element_dict(
         id_to_frame_dict[element_id] = element["frame"]
         element_hash = hash_element(element)
         id_to_element_hash[element_id] = element_hash
-        hash_to_element_ids[element_hash] = hash_to_element_ids.get(element_hash, []) + [element_id]
+        hash_to_element_ids[element_hash] = hash_to_element_ids.get(
+            element_hash, []
+        ) + [element_id]
 
-    return id_to_css_dict, id_to_element_dict, id_to_frame_dict, id_to_element_hash, hash_to_element_ids
+    return (
+        id_to_css_dict,
+        id_to_element_dict,
+        id_to_frame_dict,
+        id_to_element_hash,
+        hash_to_element_ids,
+    )
 
 
 class ElementTreeFormat(StrEnum):
@@ -221,7 +260,9 @@ class ElementTreeBuilder(ABC):
 
     @abstractmethod
     def build_element_tree(
-        self, fmt: ElementTreeFormat = ElementTreeFormat.HTML, html_need_skyvern_attrs: bool = True
+        self,
+        fmt: ElementTreeFormat = ElementTreeFormat.HTML,
+        html_need_skyvern_attrs: bool = True,
     ) -> str:
         pass
 
@@ -267,9 +308,13 @@ class ScrapedPage(BaseModel, ElementTreeBuilder):
     _scrape_exclude: ScrapeExcludeFunc | None = PrivateAttr(default=None)
 
     def __init__(self, **data: Any) -> None:
-        missing_attrs = [attr for attr in ["_browser_state", "_clean_up_func"] if attr not in data]
+        missing_attrs = [
+            attr for attr in ["_browser_state", "_clean_up_func"] if attr not in data
+        ]
         if len(missing_attrs) > 0:
-            raise ValueError(f"Missing required private attributes: {', '.join(missing_attrs)}")
+            raise ValueError(
+                f"Missing required private attributes: {', '.join(missing_attrs)}"
+            )
 
         # popup private attributes
         browser_state = data.pop("_browser_state")
@@ -286,7 +331,9 @@ class ScrapedPage(BaseModel, ElementTreeBuilder):
         return True
 
     def build_element_tree(
-        self, fmt: ElementTreeFormat = ElementTreeFormat.HTML, html_need_skyvern_attrs: bool = True
+        self,
+        fmt: ElementTreeFormat = ElementTreeFormat.HTML,
+        html_need_skyvern_attrs: bool = True,
     ) -> str:
         self.last_used_element_tree = self.element_tree_trimmed
         if fmt == ElementTreeFormat.JSON:
@@ -321,7 +368,9 @@ class ScrapedPage(BaseModel, ElementTreeBuilder):
 
             self.economy_element_tree = economy_elements
 
-        final_element_tree = self.economy_element_tree[: int(len(self.economy_element_tree) * percent_to_keep)]
+        final_element_tree = self.economy_element_tree[
+            : int(len(self.economy_element_tree) * percent_to_keep)
+        ]
         self.last_used_element_tree = final_element_tree
 
         if fmt == ElementTreeFormat.JSON:
@@ -329,7 +378,8 @@ class ScrapedPage(BaseModel, ElementTreeBuilder):
 
         if fmt == ElementTreeFormat.HTML:
             return "".join(
-                json_to_html(element, need_skyvern_attrs=html_need_skyvern_attrs) for element in final_element_tree
+                json_to_html(element, need_skyvern_attrs=html_need_skyvern_attrs)
+                for element in final_element_tree
             )
 
         raise UnknownElementTreeFormat(fmt=fmt)
@@ -377,7 +427,10 @@ class ScrapedPage(BaseModel, ElementTreeBuilder):
         return self
 
     async def generate_scraped_page(
-        self, draw_boxes: bool = True, scroll: bool = True, take_screenshots: bool = True
+        self,
+        draw_boxes: bool = True,
+        scroll: bool = True,
+        take_screenshots: bool = True,
     ) -> Self:
         return await scrape_website(
             browser_state=self._browser_state,
@@ -409,7 +462,7 @@ async def scrape_website(
     ************************************************************************************************
     ************ NOTE: MAX_SCRAPING_RETRIES is set to 0 in both staging and production *************
     ************************************************************************************************
-    High-level asynchronous function to scrape a web page. It sets up the Playwright environment, handles browser and
+            High-level asynchronous function to scrape a web page. It sets up the Patchright environment, handles browser and
     page initialization, and calls the safe scraping function. This function is ideal for general use where initial
     setup and safety measures are required.
 
@@ -544,7 +597,8 @@ async def scrape_web_unsafe(
     screenshots = []
     if take_screenshots:
         element_tree_trimmed_html_str = "".join(
-            json_to_html(element, need_skyvern_attrs=False) for element in element_tree_trimmed
+            json_to_html(element, need_skyvern_attrs=False)
+            for element in element_tree_trimmed
         )
         token_count = count_tokens(element_tree_trimmed_html_str)
         if token_count > DEFAULT_MAX_TOKENS:
@@ -557,9 +611,13 @@ async def scrape_web_unsafe(
             max_number=max_screenshot_number,
             scroll=scroll,
         )
-    id_to_css_dict, id_to_element_dict, id_to_frame_dict, id_to_element_hash, hash_to_element_ids = build_element_dict(
-        elements
-    )
+    (
+        id_to_css_dict,
+        id_to_element_dict,
+        id_to_frame_dict,
+        id_to_element_hash,
+        hash_to_element_ids,
+    ) = build_element_dict(elements)
 
     # if there are no elements, fail the scraping
     if not elements:
@@ -573,7 +631,9 @@ async def scrape_web_unsafe(
         skyvern_frame = await SkyvernFrame.create_instance(frame=page)
         html = await skyvern_frame.get_content()
         if page.viewport_size:
-            window_dimension = Resolution(width=page.viewport_size["width"], height=page.viewport_size["height"])
+            window_dimension = Resolution(
+                width=page.viewport_size["width"], height=page.viewport_size["height"]
+            )
     except Exception:
         LOG.error(
             "Failed out to get HTML content",
@@ -613,7 +673,9 @@ async def get_all_children_frames(page: Page) -> list[Frame]:
     return frames
 
 
-async def filter_frames(frames: list[Frame], scrape_exclude: ScrapeExcludeFunc | None = None) -> list[Frame]:
+async def filter_frames(
+    frames: list[Frame], scrape_exclude: ScrapeExcludeFunc | None = None
+) -> list[Frame]:
     filtered_frames = []
     for frame in frames:
         if frame.is_detached():
@@ -674,7 +736,9 @@ async def get_interactable_element_tree(
     """
     # main page index is 0
     skyvern_page = await SkyvernFrame.create_instance(page)
-    elements, element_tree = await skyvern_page.build_tree_from_body(frame_name="main.frame", frame_index=0)
+    elements, element_tree = await skyvern_page.build_tree_from_body(
+        frame_name="main.frame", frame_index=0
+    )
 
     context = skyvern_context.ensure_context()
     frames = await get_all_children_frames(page)
@@ -724,23 +788,31 @@ class IncrementalScrapePage(ElementTreeBuilder):
         frame = self.skyvern_frame.get_frame()
 
         try:
-            incremental_elements, incremental_tree = await self.skyvern_frame.get_incremental_element_tree(
-                wait_until_finished=True
+            incremental_elements, incremental_tree = (
+                await self.skyvern_frame.get_incremental_element_tree(
+                    wait_until_finished=True
+                )
             )
         except TimeoutError:
             LOG.warning(
                 "Timeout to get incremental elements with wait_until_finished, going to get incremental elements without waiting",
             )
-            incremental_elements, incremental_tree = await self.skyvern_frame.get_incremental_element_tree(
-                wait_until_finished=False
+            incremental_elements, incremental_tree = (
+                await self.skyvern_frame.get_incremental_element_tree(
+                    wait_until_finished=False
+                )
             )
 
         # we listen the incremental elements seperated by frames, so all elements will be in the same SkyvernFrame
-        self.id_to_css_dict, self.id_to_element_dict, _, _, _ = build_element_dict(incremental_elements)
+        self.id_to_css_dict, self.id_to_element_dict, _, _, _ = build_element_dict(
+            incremental_elements
+        )
 
         self.elements = incremental_elements
 
-        incremental_tree = await cleanup_element_tree(frame, frame.url, copy.deepcopy(incremental_tree))
+        incremental_tree = await cleanup_element_tree(
+            frame, frame.url, copy.deepcopy(incremental_tree)
+        )
         trimmed_element_tree = trim_element_tree(copy.deepcopy(incremental_tree))
 
         self.element_tree = incremental_tree
@@ -748,30 +820,44 @@ class IncrementalScrapePage(ElementTreeBuilder):
 
         return self.element_tree_trimmed
 
-    async def start_listen_dom_increment(self, element: ElementHandle | None = None) -> None:
+    async def start_listen_dom_increment(
+        self, element: ElementHandle | None = None
+    ) -> None:
         js_script = "async (element) => await startGlobalIncrementalObserver(element)"
-        await SkyvernFrame.evaluate(frame=self.skyvern_frame.get_frame(), expression=js_script, arg=element)
+        await SkyvernFrame.evaluate(
+            frame=self.skyvern_frame.get_frame(), expression=js_script, arg=element
+        )
 
     async def stop_listen_dom_increment(self) -> None:
         # check if the DOM has navigated away or refreshed
         js_script = "() => window.globalObserverForDOMIncrement === undefined"
-        if await SkyvernFrame.evaluate(frame=self.skyvern_frame.get_frame(), expression=js_script):
+        if await SkyvernFrame.evaluate(
+            frame=self.skyvern_frame.get_frame(), expression=js_script
+        ):
             return
         js_script = "async () => await stopGlobalIncrementalObserver()"
         await SkyvernFrame.evaluate(
-            frame=self.skyvern_frame.get_frame(), expression=js_script, timeout_ms=BUILDING_ELEMENT_TREE_TIMEOUT_MS
+            frame=self.skyvern_frame.get_frame(),
+            expression=js_script,
+            timeout_ms=BUILDING_ELEMENT_TREE_TIMEOUT_MS,
         )
 
     async def get_incremental_elements_num(self) -> int:
         # check if the DOM has navigated away or refreshed
         js_script = "() => window.globalOneTimeIncrementElements === undefined"
-        if await SkyvernFrame.evaluate(frame=self.skyvern_frame.get_frame(), expression=js_script):
+        if await SkyvernFrame.evaluate(
+            frame=self.skyvern_frame.get_frame(), expression=js_script
+        ):
             return 0
 
         js_script = "() => window.globalOneTimeIncrementElements.length"
-        return await SkyvernFrame.evaluate(frame=self.skyvern_frame.get_frame(), expression=js_script)
+        return await SkyvernFrame.evaluate(
+            frame=self.skyvern_frame.get_frame(), expression=js_script
+        )
 
-    async def __validate_element_by_value(self, value: str, element: dict) -> tuple[Locator | None, bool]:
+    async def __validate_element_by_value(
+        self, value: str, element: dict
+    ) -> tuple[Locator | None, bool]:
         """
         Locator: the locator of the matched element. None if no valid element to interact;
         bool: is_matched. True, found an intercatable alternative one; False, not found  any alternative;
@@ -784,14 +870,18 @@ class IncrementalScrapePage(ElementTreeBuilder):
 
         parent_locator: Locator | None = None
         if element_id:
-            parent_locator = self.skyvern_frame.get_frame().locator(f'[{SKYVERN_ID_ATTR}="{element_id}"]')
+            parent_locator = self.skyvern_frame.get_frame().locator(
+                f'[{SKYVERN_ID_ATTR}="{element_id}"]'
+            )
 
         # DFS to validate the children first:
         # if the child element matched and is interactable, return the child node directly
         # if the child element matched value but not interactable, try to interact with the parent node
         children = element.get("children", [])
         for child in children:
-            child_locator, is_match = await self.__validate_element_by_value(value, child)
+            child_locator, is_match = await self.__validate_element_by_value(
+                value, child
+            )
             if is_match:
                 if child_locator:
                     return child_locator, True
@@ -810,19 +900,26 @@ class IncrementalScrapePage(ElementTreeBuilder):
             return None, False
 
         if not interactable:
-            LOG.debug("Find the target element by text, but the element is not interactable", text=text)
+            LOG.debug(
+                "Find the target element by text, but the element is not interactable",
+                text=text,
+            )
             return None, True
 
         return parent_locator, True
 
     async def select_one_element_by_value(self, value: str) -> Locator | None:
         for element in self.element_tree:
-            locator, _ = await self.__validate_element_by_value(value=value, element=element)
+            locator, _ = await self.__validate_element_by_value(
+                value=value, element=element
+            )
             if locator:
                 return locator
         return None
 
-    def build_html_tree(self, element_tree: list[dict] | None = None, need_skyvern_attrs: bool = True) -> str:
+    def build_html_tree(
+        self, element_tree: list[dict] | None = None, need_skyvern_attrs: bool = True
+    ) -> str:
         return "".join(
             [
                 json_to_html(element, need_skyvern_attrs=need_skyvern_attrs)
@@ -834,11 +931,14 @@ class IncrementalScrapePage(ElementTreeBuilder):
         return False
 
     def build_element_tree(
-        self, fmt: ElementTreeFormat = ElementTreeFormat.HTML, html_need_skyvern_attrs: bool = True
+        self,
+        fmt: ElementTreeFormat = ElementTreeFormat.HTML,
+        html_need_skyvern_attrs: bool = True,
     ) -> str:
         if fmt == ElementTreeFormat.HTML:
             return self.build_html_tree(
-                element_tree=self.element_tree_trimmed, need_skyvern_attrs=html_need_skyvern_attrs
+                element_tree=self.element_tree_trimmed,
+                need_skyvern_attrs=html_need_skyvern_attrs,
             )
         if fmt == ElementTreeFormat.JSON:
             return json.dumps(self.element_tree_trimmed)
@@ -978,7 +1078,9 @@ def _build_element_links(elements: list[dict]) -> None:
     # then, build the links from element to listbox elements
     for element in elements:
         if not (
-            "attributes" in element and "role" in element["attributes"] and "listbox" == element["attributes"]["role"]
+            "attributes" in element
+            and "role" in element["attributes"]
+            and "listbox" == element["attributes"]["role"]
         ):
             continue
         listbox_text = element["text"] if "text" in element else ""
