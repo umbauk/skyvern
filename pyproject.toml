@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{ include = "skyvern" }, { include = "alembic" }]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.14"
+python = ">=3.13,<3.14"
 python-dotenv = "^1.0.0"
 openai = ">=1.68.2"
 sqlalchemy = {extras = ["mypy"], version = "^2.0.29"}
@@ -139,7 +139,7 @@ exclude = [
     "alembic/env.py",
 ]
 line-length = 120
-target-version = "py311"
+target-version = "py313"
 
 [tool.ruff.lint]
 extend-select = ["PLC0415"]
