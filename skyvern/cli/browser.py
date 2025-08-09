@@ -27,10 +27,25 @@ def get_default_chrome_location(host_system: str) -> str:
     return "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
 
 
+def get_default_edge_location(host_system: str) -> str:
+    """Get the default Microsoft Edge location based on OS."""
+    if host_system == "darwin":
+        return "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
+    if host_system == "linux":
+        edge_paths = ["/usr/bin/microsoft-edge", "/usr/bin/microsoft-edge-stable", "/usr/bin/microsoft-edge-dev"]
+        for path in edge_paths:
+            if os.path.exists(path):
+                return path
+        return "/usr/bin/microsoft-edge"
+    if host_system == "wsl":
+        return "/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+    return "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe"
+
+
 def setup_browser_config() -> tuple[str, Optional[str], Optional[str]]:
     """Configure browser settings for Skyvern."""
     console.print(Panel("\n[bold blue]Configuring web browser for scraping...[/bold blue]", border_style="cyan"))
-    browser_types = ["chromium-headless", "chromium-headful", "cdp-connect"]
+    browser_types = ["chromium-headless", "chromium-headful", "edge-headless", "edge-headful", "cdp-connect"]
 
     for i, browser_type in enumerate(browser_types, 1):
         console.print(f"[cyan]{i}.[/cyan] [bold]{browser_type}[/bold]")
@@ -38,6 +53,10 @@ def setup_browser_config() -> tuple[str, Optional[str], Optional[str]]:
             console.print("   - Runs Chrome in [italic]headless[/italic] mode (no visible window)")
         elif browser_type == "chromium-headful":
             console.print("   - Runs Chrome with [italic]visible window[/italic]")
+        elif browser_type == "edge-headless":
+            console.print("   - Runs Microsoft Edge in [italic]headless[/italic] mode (no visible window)")
+        elif browser_type == "edge-headful":
+            console.print("   - Runs Microsoft Edge with [italic]visible window[/italic]")
         elif browser_type == "cdp-connect":
             console.print("   - Connects to an [italic]existing Chrome instance[/italic]")
             console.print("   - [yellow]Requires Chrome to be running with remote debugging enabled[/yellow]")

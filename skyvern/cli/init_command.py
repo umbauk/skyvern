@@ -166,7 +166,7 @@ def init(
 
 
 def init_browser() -> None:
-    """Initialize only the browser configuration and install Chromium."""
+    """Initialize only the browser configuration and install the selected browser."""
     console.print("\n[bold blue]Configuring browser settings...[/bold blue]")
     browser_type, browser_location, remote_debugging_url = setup_browser_config()
     update_or_add_env_var("BROWSER_TYPE", browser_type)
@@ -176,15 +176,32 @@ def init_browser() -> None:
         update_or_add_env_var("BROWSER_REMOTE_DEBUGGING_URL", remote_debugging_url)
     console.print("✅ [green]Browser configuration complete.[/green]")
 
-    console.print("\n⬇️ [bold blue]Installing Chromium browser...[/bold blue]")
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        transient=True,
-        console=console,
-    ) as progress:
-        progress.add_task(
-            "[bold blue]Downloading Chromium, this may take a moment...", total=None
-        )
-        subprocess.run(["patchright", "install", "chromium"], check=True)
-    console.print("✅ [green]Chromium installation complete.[/green]")
+    # Install the appropriate browser based on selection
+    if browser_type.startswith("edge"):
+        console.print("\n⬇️ [bold blue]Installing Microsoft Edge browser...[/bold blue]")
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+            console=console,
+        ) as progress:
+            progress.add_task(
+                "[bold blue]Downloading Microsoft Edge, this may take a moment...", total=None
+            )
+            subprocess.run(["patchright", "install", "msedge"], check=True)
+        console.print("✅ [green]Microsoft Edge installation complete.[/green]")
+    elif browser_type.startswith("chromium"):
+        console.print("\n⬇️ [bold blue]Installing Chromium browser...[/bold blue]")
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+            console=console,
+        ) as progress:
+            progress.add_task(
+                "[bold blue]Downloading Chromium, this may take a moment...", total=None
+            )
+            subprocess.run(["patchright", "install", "chromium"], check=True)
+        console.print("✅ [green]Chromium installation complete.[/green]")
+    else:
+        console.print("[yellow]Skipping browser installation for CDP connection mode.[/yellow]")

@@ -490,6 +490,41 @@ async def _create_headless_chromium(
     return browser_context, browser_artifacts, None
 
 
+async def _create_headless_edge(
+    playwright: Playwright,
+    proxy_location: ProxyLocation | None = None,
+    extra_http_headers: dict[str, str] | None = None,
+    **kwargs: dict,
+) -> tuple[BrowserContext, BrowserArtifacts, BrowserCleanupFunc]:
+    user_data_dir = make_temp_directory(prefix="skyvern_browser_")
+    download_dir = initialize_download_dir()
+    BrowserContextFactory.update_chromium_browser_preferences(
+        user_data_dir=user_data_dir,
+        download_dir=download_dir,
+    )
+    cdp_port: int | None = _get_cdp_port(kwargs)
+    browser_args = BrowserContextFactory.build_browser_args(
+        proxy_location=proxy_location,
+        cdp_port=cdp_port,
+        extra_http_headers=extra_http_headers,
+    )
+    browser_args.update(
+        {
+            "user_data_dir": user_data_dir,
+            "downloads_path": download_dir,
+        }
+    )
+
+    browser_artifacts = BrowserContextFactory.build_browser_artifacts(
+        har_path=browser_args["record_har_path"]
+    )
+    browser_context = await playwright.chromium.launch_persistent_context(
+        channel="msedge",
+        **browser_args
+    )
+    return browser_context, browser_artifacts, None
+
+
 async def _create_headful_chromium(
     playwright: Playwright,
     proxy_location: ProxyLocation | None = None,
@@ -519,6 +554,41 @@ async def _create_headful_chromium(
         har_path=browser_args["record_har_path"]
     )
     browser_context = await playwright.chromium.launch_persistent_context(
+        **browser_args
+    )
+    return browser_context, browser_artifacts, None
+
+
+async def _create_headful_edge(
+    playwright: Playwright,
+    proxy_location: ProxyLocation | None = None,
+    extra_http_headers: dict[str, str] | None = None,
+    **kwargs: dict,
+) -> tuple[BrowserContext, BrowserArtifacts, BrowserCleanupFunc]:
+    user_data_dir = make_temp_directory(prefix="skyvern_browser_")
+    download_dir = initialize_download_dir()
+    BrowserContextFactory.update_chromium_browser_preferences(
+        user_data_dir=user_data_dir,
+        download_dir=download_dir,
+    )
+    cdp_port: int | None = _get_cdp_port(kwargs)
+    browser_args = BrowserContextFactory.build_browser_args(
+        proxy_location=proxy_location,
+        cdp_port=cdp_port,
+        extra_http_headers=extra_http_headers,
+    )
+    browser_args.update(
+        {
+            "user_data_dir": user_data_dir,
+            "downloads_path": download_dir,
+            "headless": False,
+        }
+    )
+    browser_artifacts = BrowserContextFactory.build_browser_artifacts(
+        har_path=browser_args["record_har_path"]
+    )
+    browser_context = await playwright.chromium.launch_persistent_context(
+        channel="msedge",
         **browser_args
     )
     return browser_context, browser_artifacts, None
@@ -652,6 +722,8 @@ async def _create_cdp_connection_browser(
 
 BrowserContextFactory.register_type("chromium-headless", _create_headless_chromium)
 BrowserContextFactory.register_type("chromium-headful", _create_headful_chromium)
+BrowserContextFactory.register_type("edge-headless", _create_headless_edge)
+BrowserContextFactory.register_type("edge-headful", _create_headful_edge)
 BrowserContextFactory.register_type("cdp-connect", _create_cdp_connection_browser)
 
 
