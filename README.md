@@ -6,6 +6,12 @@ The workflows contain different steps/actions such as logging in to a website, a
 
 This app is deployed to AWS ECS in production with 2 services: 1) backend service; and 2) UI service.
 
+# Running locally
+
+- Run the Postgres docker container on port 5432
+- Run `poetry run python -m skyvern.forge` to start the backend service
+- Run `npm start` to start the frontend service
+
 # Docker build and deploy flow
 
 ## Build the UI image

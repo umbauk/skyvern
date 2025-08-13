@@ -177,7 +177,20 @@ def init_browser() -> None:
     console.print("✅ [green]Browser configuration complete.[/green]")
 
     # Install the appropriate browser based on selection
-    if browser_type.startswith("edge"):
+    if browser_type.startswith("chrome"):
+        console.print("\n⬇️ [bold blue]Installing Google Chrome browser...[/bold blue]")
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            transient=True,
+            console=console,
+        ) as progress:
+            progress.add_task(
+                "[bold blue]Downloading Google Chrome, this may take a moment...", total=None
+            )
+            subprocess.run(["patchright", "install", "chrome"], check=True)
+        console.print("✅ [green]Google Chrome installation complete.[/green]")
+    elif browser_type.startswith("edge"):
         console.print("\n⬇️ [bold blue]Installing Microsoft Edge browser...[/bold blue]")
         with Progress(
             SpinnerColumn(),

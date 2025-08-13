@@ -45,14 +45,20 @@ def get_default_edge_location(host_system: str) -> str:
 def setup_browser_config() -> tuple[str, Optional[str], Optional[str]]:
     """Configure browser settings for Skyvern."""
     console.print(Panel("\n[bold blue]Configuring web browser for scraping...[/bold blue]", border_style="cyan"))
-    browser_types = ["chromium-headless", "chromium-headful", "edge-headless", "edge-headful", "cdp-connect"]
+    browser_types = ["chrome-headless", "chrome-headful", "chromium-headless", "chromium-headful", "edge-headless", "edge-headful", "cdp-connect"]
 
     for i, browser_type in enumerate(browser_types, 1):
         console.print(f"[cyan]{i}.[/cyan] [bold]{browser_type}[/bold]")
-        if browser_type == "chromium-headless":
-            console.print("   - Runs Chrome in [italic]headless[/italic] mode (no visible window)")
+        if browser_type == "chrome-headless":
+            console.print("   - Runs Google Chrome in [italic]headless[/italic] mode (no visible window)")
+            console.print("   - [green]Recommended for best bot detection avoidance[/green]")
+        elif browser_type == "chrome-headful":
+            console.print("   - Runs Google Chrome with [italic]visible window[/italic]")
+            console.print("   - [green]Recommended for best bot detection avoidance[/green]")
+        elif browser_type == "chromium-headless":
+            console.print("   - Runs Chromium in [italic]headless[/italic] mode (no visible window)")
         elif browser_type == "chromium-headful":
-            console.print("   - Runs Chrome with [italic]visible window[/italic]")
+            console.print("   - Runs Chromium with [italic]visible window[/italic]")
         elif browser_type == "edge-headless":
             console.print("   - Runs Microsoft Edge in [italic]headless[/italic] mode (no visible window)")
         elif browser_type == "edge-headful":

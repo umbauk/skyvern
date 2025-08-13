@@ -82,7 +82,7 @@ class Skyvern(AsyncSkyvern):
             if not browser_type:
                 # if "BROWSER_TYPE" not in os.environ:
                 #     raise Exception("browser type is missing")
-                browser_type = "edge-headful"
+                browser_type = "chrome-headful"
 
             self._browser_type = browser_type
             settings.BROWSER_TYPE = browser_type

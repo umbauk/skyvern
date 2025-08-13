@@ -594,6 +594,91 @@ async def _create_headful_edge(
     return browser_context, browser_artifacts, None
 
 
+async def _create_headless_chrome(
+    playwright: Playwright,
+    proxy_location: ProxyLocation | None = None,
+    extra_http_headers: dict[str, str] | None = None,
+    **kwargs: dict,
+) -> tuple[BrowserContext, BrowserArtifacts, BrowserCleanupFunc]:
+    user_data_dir = make_temp_directory(prefix="skyvern_browser_")
+    download_dir = initialize_download_dir()
+    BrowserContextFactory.update_chromium_browser_preferences(
+        user_data_dir=user_data_dir,
+        download_dir=download_dir,
+    )
+    cdp_port: int | None = _get_cdp_port(kwargs)
+    browser_args = BrowserContextFactory.build_browser_args(
+        proxy_location=proxy_location,
+        cdp_port=cdp_port,
+        extra_http_headers=extra_http_headers,
+    )
+
+    # Apply Patchright best practices for Chrome to avoid bot detection
+    browser_args.update(
+        {
+            "user_data_dir": user_data_dir,
+            "downloads_path": download_dir,
+            "viewport": None,  # Use browser's default viewport
+        }
+    )
+
+    # Remove custom headers to follow Patchright recommendations
+    if "extra_http_headers" in browser_args:
+        del browser_args["extra_http_headers"]
+
+    browser_artifacts = BrowserContextFactory.build_browser_artifacts(
+        har_path=browser_args["record_har_path"]
+    )
+    browser_context = await playwright.chromium.launch_persistent_context(
+        channel="chrome",
+        **browser_args
+    )
+    return browser_context, browser_artifacts, None
+
+
+async def _create_headful_chrome(
+    playwright: Playwright,
+    proxy_location: ProxyLocation | None = None,
+    extra_http_headers: dict[str, str] | None = None,
+    **kwargs: dict,
+) -> tuple[BrowserContext, BrowserArtifacts, BrowserCleanupFunc]:
+    user_data_dir = make_temp_directory(prefix="skyvern_browser_")
+    download_dir = initialize_download_dir()
+    BrowserContextFactory.update_chromium_browser_preferences(
+        user_data_dir=user_data_dir,
+        download_dir=download_dir,
+    )
+    cdp_port: int | None = _get_cdp_port(kwargs)
+    browser_args = BrowserContextFactory.build_browser_args(
+        proxy_location=proxy_location,
+        cdp_port=cdp_port,
+        extra_http_headers=extra_http_headers,
+    )
+
+    # Apply Patchright best practices for Chrome to avoid bot detection
+    browser_args.update(
+        {
+            "user_data_dir": user_data_dir,
+            "downloads_path": download_dir,
+            "headless": False,
+            "viewport": None,  # Use browser's default viewport
+        }
+    )
+
+    # Remove custom headers and user agent to follow Patchright recommendations
+    if "extra_http_headers" in browser_args:
+        del browser_args["extra_http_headers"]
+
+    browser_artifacts = BrowserContextFactory.build_browser_artifacts(
+        har_path=browser_args["record_har_path"]
+    )
+    browser_context = await playwright.chromium.launch_persistent_context(
+        channel="chrome",
+        **browser_args
+    )
+    return browser_context, browser_artifacts, None
+
+
 def default_user_data_dir() -> pathlib.Path:
     p = platform.system()
     if p == "Darwin":
@@ -722,6 +807,8 @@ async def _create_cdp_connection_browser(
 
 BrowserContextFactory.register_type("chromium-headless", _create_headless_chromium)
 BrowserContextFactory.register_type("chromium-headful", _create_headful_chromium)
+BrowserContextFactory.register_type("chrome-headless", _create_headless_chrome)
+BrowserContextFactory.register_type("chrome-headful", _create_headful_chrome)
 BrowserContextFactory.register_type("edge-headless", _create_headless_edge)
 BrowserContextFactory.register_type("edge-headful", _create_headful_edge)
 BrowserContextFactory.register_type("cdp-connect", _create_cdp_connection_browser)

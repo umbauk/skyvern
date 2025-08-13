@@ -11,7 +11,7 @@ class Settings(BaseSettings):
 
     ADDITIONAL_MODULES: list[str] = []
 
-    BROWSER_TYPE: str = "edge-headful"
+    BROWSER_TYPE: str = "chrome-headful"
     BROWSER_REMOTE_DEBUGGING_URL: str = "http://127.0.0.1:9222"
     CHROME_EXECUTABLE_PATH: str | None = None
     MAX_SCRAPING_RETRIES: int = 0
