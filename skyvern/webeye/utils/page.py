@@ -211,9 +211,35 @@ def _merge_images_by_position(
     for i in range(1, len(images)):
         step = positions[i] - positions[i - 1]
         overlap = images[i].height - step
-        if overlap > 0:
-            cropped = images[i].crop((0, overlap, images[i].width, images[i].height))
+
+        # Ensure crop coordinates are valid to prevent PIL "lower is less than upper" error
+        if overlap > 0 and overlap < images[i].height:
+            # Validate that upper < lower for crop coordinates (left, upper, right, lower)
+            upper = max(0, min(overlap, images[i].height - 1))
+            lower = images[i].height
+            if upper < lower:
+                cropped = images[i].crop((0, upper, images[i].width, lower))
+            else:
+                # If coordinates would be invalid, use the full image
+                LOG.warning(
+                    "Invalid crop coordinates detected, using full image",
+                    image_index=i,
+                    overlap=overlap,
+                    upper=upper,
+                    lower=lower,
+                    image_height=images[i].height,
+                )
+                cropped = images[i]
         else:
+            # No overlap or invalid overlap, use full image
+            if overlap < 0:
+                LOG.debug(
+                    "Negative overlap detected, using full image",
+                    image_index=i,
+                    overlap=overlap,
+                    step=step,
+                    image_height=images[i].height,
+                )
             cropped = images[i]
 
         merged_img.paste(cropped, (0, current_y))
