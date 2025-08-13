@@ -232,7 +232,7 @@ def build_element_dict(
         # get_interactable_element_tree marks each interactable element with a unique_id attribute
         id_to_css_dict[element_id] = f"[{SKYVERN_ID_ATTR}='{element_id}']"
         id_to_element_dict[element_id] = element
-        id_to_frame_dict[element_id] = element["frame"]
+        id_to_frame_dict[element_id] = element.get("frame") or "main.frame"
         element_hash = hash_element(element)
         id_to_element_hash[element_id] = element_hash
         hash_to_element_ids[element_hash] = hash_to_element_ids.get(

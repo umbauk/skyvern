@@ -1,3 +1,11 @@
+# About
+
+This app allows users to create and execute workflows for AI agents to execute on websites.
+
+The workflows contain different steps/actions such as logging in to a website, adding an item to a shopping cart etc.
+
+This app is deployed to AWS ECS in production with 2 services: 1) backend service; and 2) UI service.
+
 # Docker build and deploy flow
 
 ## Build the UI image
@@ -40,6 +48,10 @@ docker tag skyvern-custom:latest 868807225550.dkr.ecr.us-west-1.amazonaws.com/sk
 docker push 868807225550.dkr.ecr.us-west-1.amazonaws.com/skyvern:backend-latest
 
 ```
+
+# Docker build memory issues
+
+The docker build cache can get large (30GB). When it does, you can prune it with the command `docker builder prune`
 
 # Updating the API key in skyvern-ui on new install
 

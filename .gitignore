@@ -7,6 +7,7 @@ log-ingestion.txt
 logs
 *.log
 current.json
+log/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
