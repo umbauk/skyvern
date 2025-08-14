@@ -669,6 +669,12 @@ async def _create_headful_chrome(
     if "extra_http_headers" in browser_args:
         del browser_args["extra_http_headers"]
 
+    # Override User-Agent for bot detection avoidance
+    # TODO: This is a temporary solution to avoid bot detection. Chrome version needs to be updated with new chrome versions
+    browser_args["args"].extend([
+        "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0"
+    ])
+
     browser_artifacts = BrowserContextFactory.build_browser_artifacts(
         har_path=browser_args["record_har_path"]
     )

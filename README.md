@@ -30,6 +30,8 @@ docker tag skyvern-ui-custom:latest 868807225550.dkr.ecr.us-west-1.amazonaws.com
 
 # Push the image to ECR
 docker push 868807225550.dkr.ecr.us-west-1.amazonaws.com/skyvern:ui-latest
+
+Finally, force a new deployment of the service to use the updated image.
 ```
 
 Select your UI task definition → Create new revision
@@ -52,6 +54,8 @@ docker tag skyvern-custom:latest 868807225550.dkr.ecr.us-west-1.amazonaws.com/sk
 
 # Push the image to ECR
 docker push 868807225550.dkr.ecr.us-west-1.amazonaws.com/skyvern:backend-latest
+
+Finally, force a new deployment of the service to use the updated image.
 
 ```
 
