@@ -78,3 +78,7 @@ aws ecs execute-command \
   --interactive \
   --command "/bin/bash"
 ```
+
+# Access HAR files in prod
+
+https://d1tj7fs6nia57h.cloudfront.net/filesystem/fs-0635652ec64e0edd2
